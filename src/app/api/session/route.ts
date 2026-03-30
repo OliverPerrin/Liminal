@@ -28,17 +28,36 @@ type ProfileRecord = {
   extra_context: string | null;
 };
 
-function parseSseChunk(chunk: string): string {
+function parseSseEventsWithBuffer(buffer: string): {
+  textDelta: string;
+  remainder: string;
+} {
   let text = "";
-  const lines = chunk.split("\n");
+  let remainder = buffer;
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith("data:")) {
+  while (true) {
+    const separatorIndex = remainder.indexOf("\n\n");
+    if (separatorIndex < 0) {
+      break;
+    }
+
+    const rawEvent = remainder.slice(0, separatorIndex);
+    remainder = remainder.slice(separatorIndex + 2);
+
+    const eventLines = rawEvent
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith("data:"));
+
+    if (eventLines.length === 0) {
       continue;
     }
 
-    const data = trimmed.replace(/^data:\s*/, "");
+    const data = eventLines
+      .map((line) => line.replace(/^data:\s*/, ""))
+      .join("\n")
+      .trim();
+
     if (!data || data === "[DONE]") {
       continue;
     }
@@ -57,7 +76,7 @@ function parseSseChunk(chunk: string): string {
     }
   }
 
-  return text;
+  return { textDelta: text, remainder };
 }
 
 export async function POST(request: Request) {
@@ -183,8 +202,10 @@ export async function POST(request: Request) {
 
     const reader = upstream.body.getReader();
     const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
     let assistantText = "";
     let lastPersistAt = 0;
+    let sseRemainder = "";
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -214,8 +235,10 @@ export async function POST(request: Request) {
             break;
           }
 
-          const chunk = new TextDecoder().decode(value, { stream: true });
-          const textDelta = parseSseChunk(chunk);
+          const chunk = decoder.decode(value, { stream: true });
+          const parsedChunk = parseSseEventsWithBuffer(`${sseRemainder}${chunk}`);
+          sseRemainder = parsedChunk.remainder;
+          const textDelta = parsedChunk.textDelta;
 
           if (textDelta) {
             assistantText += textDelta;
@@ -227,6 +250,14 @@ export async function POST(request: Request) {
               lastPersistAt = now;
             }
           }
+        }
+
+        // Flush decoder + parse any trailing buffered SSE event data.
+        const flushChunk = decoder.decode();
+        const parsedFinal = parseSseEventsWithBuffer(`${sseRemainder}${flushChunk}`);
+        if (parsedFinal.textDelta) {
+          assistantText += parsedFinal.textDelta;
+          controller.enqueue(encoder.encode(parsedFinal.textDelta));
         }
 
         await persistAssistantMessage(assistantText);
