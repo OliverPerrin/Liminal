@@ -74,13 +74,19 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
       }
 
       const payload = (await parseResponse.json()) as ParseResumeResponse;
+      const parsedStories = (payload.star_stories || []).map((story) => ({
+        ...story,
+        id: story.id || crypto.randomUUID(),
+      }));
+
       setResumeText(payload.resume_text || "");
-      setStories(
-        (payload.star_stories || []).map((story) => ({
-          ...story,
-          id: story.id || crypto.randomUUID(),
-        })),
-      );
+      setStories(parsedStories);
+
+      if (parsedStories.length === 0) {
+        setWarning(
+          "Resume text was extracted, but no STAR stories were generated. Add stories manually or run generation again.",
+        );
+      }
 
       const supabase = getSupabaseBrowserClient();
       const { error: uploadError } = await supabase.storage
@@ -90,9 +96,10 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
       if (uploadError) {
         const message = uploadError.message || "";
         if (message.toLowerCase().includes("bucket not found")) {
-          setWarning(
-            "Resume storage bucket 'resumes' is missing. STAR stories were generated, but PDF file was not saved to storage.",
-          );
+          const storageWarning =
+            "Resume storage bucket 'resumes' is missing. PDF file was not saved to storage.";
+
+          setWarning((prev) => (prev ? `${prev} ${storageWarning}` : storageWarning));
         } else {
           throw uploadError;
         }
@@ -191,6 +198,12 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
         </div>
 
         <div className="mt-4 space-y-4">
+          {stories.length === 0 ? (
+            <p className="rounded-lg border border-app-border bg-app-panel-2 px-3 py-2 text-sm text-app-muted">
+              No STAR stories yet. Click "Extract + Generate STAR Stories" or add one manually.
+            </p>
+          ) : null}
+
           {stories.map((story, index) => (
             <article key={story.id || `story-${index}`} className="rounded-lg border border-app-border bg-app-panel-2 p-4">
               <div className="mb-2 flex items-center justify-between">
