@@ -33,6 +33,7 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const canSave = useMemo(() => resumeText.trim().length > 0 && stories.length > 0, [resumeText, stories]);
 
@@ -55,6 +56,7 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
     }
 
     setError(null);
+    setWarning(null);
     setParsing(true);
 
     try {
@@ -86,7 +88,14 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
         .upload(`${userId}/resume.pdf`, resumeFile, { upsert: true });
 
       if (uploadError) {
-        throw uploadError;
+        const message = uploadError.message || "";
+        if (message.toLowerCase().includes("bucket not found")) {
+          setWarning(
+            "Resume storage bucket 'resumes' is missing. STAR stories were generated, but PDF file was not saved to storage.",
+          );
+        } else {
+          throw uploadError;
+        }
       }
     } catch (parseError) {
       const message = parseError instanceof Error ? parseError.message : "Resume parse failed";
@@ -99,6 +108,7 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
   async function handleSaveProfile() {
     setSaving(true);
     setError(null);
+    setWarning(null);
 
     try {
       const supabase = getSupabaseBrowserClient();
@@ -241,6 +251,7 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
           className="mt-3 w-full rounded-lg border border-app-border bg-app-panel-2 px-3 py-2 text-sm"
         />
 
+        {warning ? <p className="mt-3 text-sm text-amber-300">{warning}</p> : null}
         {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
 
         <button

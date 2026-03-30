@@ -93,6 +93,10 @@ const resumeParseSchema = z.object({
   star_stories: z.array(starStorySchema).default([]),
 });
 
+const fallbackStoriesSchema = z.object({
+  star_stories: z.array(starStorySchema).min(1),
+});
+
 type ParsedResumePayload = z.infer<typeof resumeParseSchema>;
 
 type AnthropicToolUseBlock = {
@@ -155,6 +159,110 @@ function extractToolInput(payload: unknown): unknown {
   );
 
   return toolUse?.input ?? null;
+}
+
+function extractToolInputByName(payload: unknown, toolName: string): unknown {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const maybeContent = (payload as { content?: AnthropicToolUseBlock[] }).content;
+  if (!Array.isArray(maybeContent)) {
+    return null;
+  }
+
+  const toolUse = maybeContent.find(
+    (item) => item?.type === "tool_use" && item?.name === toolName,
+  );
+
+  return toolUse?.input ?? null;
+}
+
+async function generateFallbackStories(
+  apiKey: string,
+  anthropicModel: string,
+  anthropicVersion: string,
+  resumeText: string,
+): Promise<StarStory[]> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), PARSE_RESUME_TIMEOUT_MS);
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": anthropicVersion,
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: anthropicModel,
+        max_tokens: 1200,
+        temperature: 0,
+        tools: [
+          {
+            name: "extract_star_stories",
+            description: "Generate STAR stories from a resume text.",
+            input_schema: {
+              type: "object",
+              properties: {
+                star_stories: {
+                  type: "array",
+                  minItems: 4,
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      title: { type: "string" },
+                      question: { type: "string" },
+                      situation: { type: "string" },
+                      task: { type: "string" },
+                      action: { type: "string" },
+                      result: { type: "string" },
+                    },
+                    required: ["title", "question", "situation", "task", "action", "result"],
+                  },
+                },
+              },
+              required: ["star_stories"],
+            },
+          },
+        ],
+        tool_choice: { type: "tool", name: "extract_star_stories" },
+        messages: [
+          {
+            role: "user",
+            content: `Generate 6-8 high quality STAR stories for behavioral interviews from this resume text. Return output using the selected tool only.\n\nResume text:\n${resumeText}`,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const payload = await response.json();
+    const toolInput = extractToolInputByName(payload, "extract_star_stories");
+    if (!toolInput) {
+      return [];
+    }
+
+    return fallbackStoriesSchema.parse(toolInput).star_stories.map((story) => ({
+      id: story.id || crypto.randomUUID(),
+      title: story.title || "",
+      question: story.question || "",
+      situation: story.situation || "",
+      task: story.task || "",
+      action: story.action || "",
+      result: story.result || "",
+    }));
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function POST(request: Request) {
@@ -251,7 +359,7 @@ ${promptResumeText}`,
       parsedJson = resumeParseSchema.parse(parseJsonFromText(rawText));
     }
 
-    const starStories = (parsedJson.star_stories || []).map((story) => ({
+    let starStories = (parsedJson.star_stories || []).map((story) => ({
       id: story.id || crypto.randomUUID(),
       title: story.title || "",
       question: story.question || "",
@@ -260,6 +368,15 @@ ${promptResumeText}`,
       action: story.action || "",
       result: story.result || "",
     }));
+
+    if (starStories.length === 0) {
+      starStories = await generateFallbackStories(
+        apiKey,
+        anthropicModel,
+        anthropicVersion,
+        promptResumeText,
+      );
+    }
 
     return Response.json({
       resume_text: parsedJson.resume_text || resumeText,
