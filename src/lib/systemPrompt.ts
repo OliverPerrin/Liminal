@@ -112,7 +112,19 @@ math and diagram formatting.
     concise ASCII fallback.
 
 4. Do not output truncated tags, partial equations, or malformed markup.
-  Ensure each response is coherent and well-formed markdown.`;
+  Ensure each response is coherent and well-formed markdown.
+
+---
+
+PACING RULES (STRICT)
+
+1. Output exactly ONE stage per assistant turn.
+2. After finishing that stage, end with exactly:
+  Ready to continue, or any questions before we move on?
+3. On the first session turn, output only STAGE 1.
+4. If the user replies with "continue" (or equivalent), output only the next stage.
+5. If the user asks a question, answer it directly, then continue with the same stage flow.
+6. Never output multiple stages in one response.`;
 
 export function buildSystemPrompt(input: {
   resumeText: string | null;

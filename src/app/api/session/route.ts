@@ -188,7 +188,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: anthropicModel,
-        max_tokens: 4000,
+        max_tokens: 8000,
         system: systemPrompt,
         stream: true,
         messages: requestData.messages.map((message) => ({
