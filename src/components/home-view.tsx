@@ -182,7 +182,11 @@ export function HomeView({ userId }: HomeViewProps) {
   function startTopic(topic: string) {
     setTopicDraft(topic);
     setActiveTopic(topic);
-    void sendMessage(topic, `Start a structured session on ${topic}.`, true);
+    void sendMessage(
+      topic,
+      `Start a structured session on ${topic}. Follow the output format contract strictly: use markdown stage headers, inline math as $...$, block math as $$...$$, and include one complete valid inline <svg>...</svg> diagram in STAGE 2.`,
+      true,
+    );
   }
 
   function openSession(sessionRecord: SessionRecord) {

@@ -6,7 +6,7 @@ import type { SessionMessage } from "@/lib/types";
 
 export const runtime = "edge";
 
-const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5";
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-5";
 const DEFAULT_ANTHROPIC_VERSION = "2023-06-01";
 
 const requestSchema = z.object({
@@ -105,7 +105,10 @@ export async function POST(request: Request) {
       process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-    const anthropicModel = process.env.ANTHROPIC_MODEL || DEFAULT_ANTHROPIC_MODEL;
+    const anthropicModel =
+      process.env.ANTHROPIC_SESSION_MODEL ||
+      process.env.ANTHROPIC_MODEL ||
+      DEFAULT_ANTHROPIC_MODEL;
     const anthropicVersion =
       process.env.ANTHROPIC_API_VERSION || DEFAULT_ANTHROPIC_VERSION;
 

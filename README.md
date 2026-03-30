@@ -35,6 +35,7 @@ Copy .env.example to .env.local and fill values:
 
 - ANTHROPIC_API_KEY
 - ANTHROPIC_MODEL (default: claude-sonnet-4-5)
+- ANTHROPIC_SESSION_MODEL (optional override for /api/session model)
 - ANTHROPIC_API_VERSION (default: 2023-06-01)
 - SUPABASE_URL
 - SUPABASE_ANON_KEY
