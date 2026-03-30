@@ -12,7 +12,7 @@ const DEFAULT_ANTHROPIC_VERSION = "2023-06-01";
 const requestSchema = z.object({
   topic: z.string().min(1),
   user_id: z.string().uuid(),
-  session_id: z.string().uuid().optional(),
+  session_id: z.string().uuid().nullable().optional(),
   messages: z.array(
     z.object({
       role: z.enum(["user", "assistant"]),

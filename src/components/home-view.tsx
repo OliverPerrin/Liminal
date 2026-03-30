@@ -86,7 +86,7 @@ export function HomeView({ userId }: HomeViewProps) {
       body: JSON.stringify({
         topic,
         user_id: userId,
-        session_id: existingSessionId ?? sessionId,
+        session_id: existingSessionId ?? sessionId ?? undefined,
         messages: nextMessages,
       }),
     });
