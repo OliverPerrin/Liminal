@@ -5,6 +5,8 @@ export const runtime = "nodejs";
 
 const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5";
 const DEFAULT_ANTHROPIC_VERSION = "2023-06-01";
+const PARSE_RESUME_TIMEOUT_MS = 45000;
+const MAX_RESUME_CHARS = 30000;
 
 const requestSchema = z.object({
   resume_text: z.string().min(1),
@@ -76,6 +78,37 @@ type StarStory = {
   result: string;
 };
 
+const starStorySchema = z.object({
+  id: z.string().optional(),
+  title: z.string().default(""),
+  question: z.string().default(""),
+  situation: z.string().default(""),
+  task: z.string().default(""),
+  action: z.string().default(""),
+  result: z.string().default(""),
+});
+
+const resumeParseSchema = z.object({
+  resume_text: z.string().min(1),
+  star_stories: z.array(starStorySchema).default([]),
+});
+
+type ParsedResumePayload = z.infer<typeof resumeParseSchema>;
+
+type AnthropicToolUseBlock = {
+  type?: string;
+  name?: string;
+  input?: unknown;
+};
+
+function trimResumeForPrompt(resumeText: string): string {
+  if (resumeText.length <= MAX_RESUME_CHARS) {
+    return resumeText;
+  }
+
+  return `${resumeText.slice(0, MAX_RESUME_CHARS)}\n\n[TRUNCATED_FOR_MODEL_INPUT]`;
+}
+
 function extractTextContent(payload: unknown): string {
   if (!payload || typeof payload !== "object") {
     return "";
@@ -107,10 +140,28 @@ function parseJsonFromText(text: string): unknown {
   throw new Error("Model did not return JSON");
 }
 
+function extractToolInput(payload: unknown): unknown {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const maybeContent = (payload as { content?: AnthropicToolUseBlock[] }).content;
+  if (!Array.isArray(maybeContent)) {
+    return null;
+  }
+
+  const toolUse = maybeContent.find(
+    (item) => item?.type === "tool_use" && item?.name === "extract_resume_profile",
+  );
+
+  return toolUse?.input ?? null;
+}
+
 export async function POST(request: Request) {
   try {
     assertEnv(["ANTHROPIC_API_KEY"]);
     const resumeText = await getResumeTextFromRequest(request);
+    const promptResumeText = trimResumeForPrompt(resumeText);
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     const anthropicModel = process.env.ANTHROPIC_MODEL || DEFAULT_ANTHROPIC_MODEL;
@@ -120,6 +171,9 @@ export async function POST(request: Request) {
       return Response.json({ error: "Missing ANTHROPIC_API_KEY" }, { status: 500 });
     }
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), PARSE_RESUME_TIMEOUT_MS);
+
     const modelResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -127,36 +181,55 @@ export async function POST(request: Request) {
         "x-api-key": apiKey,
         "anthropic-version": anthropicVersion,
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model: anthropicModel,
-        max_tokens: 3000,
+        max_tokens: 1800,
+        temperature: 0,
+        tools: [
+          {
+            name: "extract_resume_profile",
+            description: "Extract normalized resume text and STAR stories for interview prep.",
+            input_schema: {
+              type: "object",
+              properties: {
+                resume_text: { type: "string" },
+                star_stories: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      title: { type: "string" },
+                      question: { type: "string" },
+                      situation: { type: "string" },
+                      task: { type: "string" },
+                      action: { type: "string" },
+                      result: { type: "string" },
+                    },
+                    required: ["title", "question", "situation", "task", "action", "result"],
+                  },
+                },
+              },
+              required: ["resume_text", "star_stories"],
+            },
+          },
+        ],
+        tool_choice: { type: "tool", name: "extract_resume_profile" },
         messages: [
           {
             role: "user",
-            content: `Extract this resume into normalized plain text and generate STAR stories.
-Return ONLY valid JSON in the shape:
-{
-  "resume_text": "...",
-  "star_stories": [
-    {
-      "id": "uuid",
-      "title": "...",
-      "question": "...",
-      "situation": "...",
-      "task": "...",
-      "action": "...",
-      "result": "..."
-    }
-  ]
-}
-Prefer 6-8 high quality STAR stories mapped to common behavioral interview prompts.
+            content: `Extract and normalize this resume. Generate 6-8 high quality STAR stories mapped to common behavioral interview prompts.
+Return output using the selected tool only.
 
 Resume text:
-${resumeText}`,
+${promptResumeText}`,
           },
         ],
       }),
     });
+
+    clearTimeout(timeout);
 
     if (!modelResponse.ok) {
       const failureText = await modelResponse.text();
@@ -167,11 +240,16 @@ ${resumeText}`,
     }
 
     const payload = await modelResponse.json();
-    const rawText = extractTextContent(payload);
-    const parsedJson = parseJsonFromText(rawText) as {
-      resume_text?: string;
-      star_stories?: StarStory[];
-    };
+    const toolInput = extractToolInput(payload);
+
+    let parsedJson: ParsedResumePayload;
+    if (toolInput) {
+      parsedJson = resumeParseSchema.parse(toolInput);
+    } else {
+      // Fallback for unexpected model behavior.
+      const rawText = extractTextContent(payload);
+      parsedJson = resumeParseSchema.parse(parseJsonFromText(rawText));
+    }
 
     const starStories = (parsedJson.star_stories || []).map((story) => ({
       id: story.id || crypto.randomUUID(),
