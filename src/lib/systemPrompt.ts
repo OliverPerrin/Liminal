@@ -36,7 +36,9 @@ Explain the core idea without equations first. Then render a detailed
 diagram using SVG. For DL architectures, the diagram is mandatory and
 should show data flow, dimensions, and key operations. For algorithms,
 show the computational or logical flow. Never skip visuals for DL
-topics.
+topics. Diagram style must be clean and academic, similar to TikZ:
+white background, black/gray strokes, legible serif labels, balanced
+spacing, and complete arrowheads.
 
 STAGE 3 - THE MATH
 Full derivation. Every term motivated - not just what it is but why
@@ -108,8 +110,8 @@ math and diagram formatting.
   - Output one complete inline raw <svg>...</svg> block (not a code fence).
   - SVG must be syntactically valid and fully closed.
   - Include viewBox and visible labels.
-  - If you cannot produce valid SVG, explicitly say so and provide a
-    concise ASCII fallback.
+  - Include a visual legend/title and clear forward/backward flow.
+  - Do not use ASCII art as a substitute when SVG is required.
 
 4. Do not output truncated tags, partial equations, or malformed markup.
   Ensure each response is coherent and well-formed markdown.

@@ -13,6 +13,27 @@ type MarkdownMessageProps = {
   content: string;
 };
 
+function normalizeAssistantContent(raw: string): string {
+  let text = raw;
+
+  // Ensure stage markers become markdown headers.
+  text = text.replace(/^STAGE\s+(\d+)\s+-\s+(.+)$/gm, "## STAGE $1 - $2");
+
+  // Fix common duplicated artifact pattern: plainText\latexPlainText.
+  text = text.replace(
+    /[^\s\\]{1,40}(\\[a-zA-Z]+(?:\{[^{}\n]{1,120}\}|\[[^\]\n]{1,120}\}|_[^\s]+|\^[^\s]+){1,6})[^\s\\]{1,40}/g,
+    (_match, latex) => `$${latex}$`,
+  );
+
+  // Wrap standalone LaTeX command sequences so KaTeX can render them.
+  text = text.replace(
+    /(^|[^$`])(\\(?:frac|partial|sigma|cdot|odot|hat|bar|mathbf|mathbb|sum|prod|nabla|alpha|beta|gamma|theta|lambda|mu|nu|pi|rho|tau|phi|psi|omega)(?:\{[^{}\n]*\}|\[[^\]\n]*\]|_[^\s]+|\^[^\s]+){1,8})(?=[^$`]|$)/g,
+    (_match, prefix, latex) => `${prefix}$${latex}$`,
+  );
+
+  return text;
+}
+
 const svgSchema = {
   ...defaultSchema,
   tagNames: [
@@ -57,6 +78,8 @@ const svgSchema = {
 };
 
 export function MarkdownMessage({ content }: MarkdownMessageProps) {
+  const normalizedContent = normalizeAssistantContent(content);
+
   return (
     <div className="prose prose-invert max-w-none prose-pre:bg-transparent prose-code:text-app-fg">
       <ReactMarkdown
@@ -89,7 +112,7 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
           },
         }}
       >
-        {content}
+        {normalizedContent}
       </ReactMarkdown>
     </div>
   );
