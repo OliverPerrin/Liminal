@@ -50,9 +50,10 @@ Note: next.config.ts maps SUPABASE_URL and SUPABASE_ANON_KEY into NEXT_PUBLIC_* 
 ## Supabase Setup
 
 1. Create a Supabase project.
-2. Run the SQL migration from supabase/migrations/001_init.sql in the SQL editor.
-3. Create a storage bucket named resumes.
-4. Ensure auth email/password provider is enabled.
+2. Run SQL migrations in order:
+  - supabase/migrations/001_init.sql
+  - supabase/migrations/002_storage_resumes_bucket.sql
+3. Ensure auth email/password provider is enabled.
 
 ## Local Development
 
@@ -112,3 +113,4 @@ App routes:
 - ANTHROPIC_API_VERSION is the API contract version header, not the model date.
 - Session writes are persisted during streaming and finalized at completion.
 - Server and edge routes fail fast with clear errors when required env vars are missing or misnamed.
+- STAR story generation uses a fixed behavioral question bank so outputs are consistent across users.

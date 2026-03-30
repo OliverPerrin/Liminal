@@ -7,6 +7,16 @@ const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5";
 const DEFAULT_ANTHROPIC_VERSION = "2023-06-01";
 const PARSE_RESUME_TIMEOUT_MS = 45000;
 const MAX_RESUME_CHARS = 30000;
+const STAR_QUESTION_BANK = [
+  "Tell me about a time you led a complex project end-to-end.",
+  "Tell me about a time you resolved a high-impact production issue.",
+  "Tell me about a time you improved model performance significantly.",
+  "Tell me about a time you had to make a difficult technical tradeoff.",
+  "Tell me about a time your experiment failed and what you learned.",
+  "Tell me about a time you influenced stakeholders without direct authority.",
+  "Tell me about a time you improved system efficiency (latency, cost, or memory).",
+  "Tell me about a time you mentored or raised the bar for a team.",
+] as const;
 
 const requestSchema = z.object({
   resume_text: z.string().min(1),
@@ -113,6 +123,10 @@ function trimResumeForPrompt(resumeText: string): string {
   return `${resumeText.slice(0, MAX_RESUME_CHARS)}\n\n[TRUNCATED_FOR_MODEL_INPUT]`;
 }
 
+function formatQuestionBank(): string {
+  return STAR_QUESTION_BANK.map((question, index) => `${index + 1}. ${question}`).join("\n");
+}
+
 function extractTextContent(payload: unknown): string {
   if (!payload || typeof payload !== "object") {
     return "";
@@ -215,7 +229,7 @@ async function generateFallbackStories(
                     properties: {
                       id: { type: "string" },
                       title: { type: "string" },
-                      question: { type: "string" },
+                      question: { type: "string", enum: [...STAR_QUESTION_BANK] },
                       situation: { type: "string" },
                       task: { type: "string" },
                       action: { type: "string" },
@@ -233,7 +247,14 @@ async function generateFallbackStories(
         messages: [
           {
             role: "user",
-            content: `Generate 6-8 high quality STAR stories for behavioral interviews from this resume text. Return output using the selected tool only.\n\nResume text:\n${resumeText}`,
+            content: `Generate 6-8 high quality STAR stories for behavioral interviews from this resume text.
+Use only the exact question strings from this fixed list, one story per question:
+${formatQuestionBank()}
+
+Return output using the selected tool only.
+
+Resume text:
+${resumeText}`,
           },
         ],
       }),
@@ -309,7 +330,7 @@ export async function POST(request: Request) {
                     properties: {
                       id: { type: "string" },
                       title: { type: "string" },
-                      question: { type: "string" },
+                      question: { type: "string", enum: [...STAR_QUESTION_BANK] },
                       situation: { type: "string" },
                       task: { type: "string" },
                       action: { type: "string" },
@@ -327,7 +348,10 @@ export async function POST(request: Request) {
         messages: [
           {
             role: "user",
-            content: `Extract and normalize this resume. Generate 6-8 high quality STAR stories mapped to common behavioral interview prompts.
+            content: `Extract and normalize this resume. Generate 6-8 high quality STAR stories.
+Use only the exact question strings from this fixed list, one story per question:
+${formatQuestionBank()}
+
 Return output using the selected tool only.
 
 Resume text:
