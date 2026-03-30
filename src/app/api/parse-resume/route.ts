@@ -1,4 +1,3 @@
-import { PDFParse } from "pdf-parse";
 import { z } from "zod";
 import { assertEnv } from "@/lib/runtime-env";
 
@@ -10,6 +9,29 @@ const DEFAULT_ANTHROPIC_VERSION = "2023-06-01";
 const requestSchema = z.object({
   resume_text: z.string().min(1),
 });
+
+type PdfParseResult = { text?: string };
+type PdfParseFn = (dataBuffer: Buffer) => Promise<PdfParseResult>;
+
+let cachedPdfParse: PdfParseFn | null = null;
+
+async function getPdfParse(): Promise<PdfParseFn> {
+  if (cachedPdfParse) {
+    return cachedPdfParse;
+  }
+
+  const module = (await import("pdf-parse/lib/pdf-parse.js")) as {
+    default?: PdfParseFn;
+  };
+
+  const parser = module.default;
+  if (typeof parser !== "function") {
+    throw new Error("PDF parser is unavailable in runtime.");
+  }
+
+  cachedPdfParse = parser;
+  return parser;
+}
 
 async function getResumeTextFromRequest(request: Request): Promise<string> {
   const contentType = request.headers.get("content-type") || "";
@@ -23,9 +45,8 @@ async function getResumeTextFromRequest(request: Request): Promise<string> {
     }
 
     const fileBuffer = Buffer.from(await resumeFile.arrayBuffer());
-    const parser = new PDFParse({ data: fileBuffer });
-    const parsedPdf = await parser.getText();
-    await parser.destroy();
+    const pdfParse = await getPdfParse();
+    const parsedPdf = await pdfParse(fileBuffer);
     const extracted = parsedPdf.text?.trim();
 
     if (!extracted) {
