@@ -28,6 +28,10 @@ function normalizeAssistantContent(raw: string): string {
     return `$\\frac{\\partial ${top}}{\\partial ${bottom}}$`;
   });
 
+  // Remove common plain-text prefixes accidentally glued before TeX commands.
+  text = text.replace(/[A-Za-z0-9_]+(?=\\frac)/g, "");
+  text = text.replace(/[A-Za-z0-9_]+(?=\\partial)/g, "");
+
   // Wrap standalone equation lines in block math if they include TeX commands.
   text = text
     .split("\n")
@@ -52,6 +56,12 @@ function normalizeAssistantContent(raw: string): string {
 function sanitizeMermaidCode(input: string): string {
   let code = input;
 
+  // Keep only the diagram definition from the first flowchart declaration onward.
+  const flowchartIndex = code.search(/flowchart\s+(LR|RL|TB|BT|TD)/i);
+  if (flowchartIndex >= 0) {
+    code = code.slice(flowchartIndex);
+  }
+
   // Quote node labels to avoid parser failures with unicode/symbol-heavy labels.
   code = code.replace(/([A-Za-z][A-Za-z0-9_]*)\[([^\]\n]+)\]/g, (_m, id, label) => {
     const safe = label.replace(/"/g, '\\"').trim();
@@ -72,6 +82,10 @@ function sanitizeMermaidCode(input: string): string {
     "₉": "9",
   };
   code = code.replace(/[₀₁₂₃₄₅₆₇₈₉]/g, (char) => subMap[char] ?? char);
+
+  // Remove characters Mermaid commonly rejects in labels.
+  code = code.replace(/[“”]/g, '"');
+  code = code.replace(/[’]/g, "'");
 
   return code;
 }
@@ -112,6 +126,9 @@ function MermaidDiagram({ code }: MermaidDiagramProps) {
         });
 
         const rendered = await mermaid.render(`mermaid-${id}`, sanitizedCode);
+        if (/Syntax error in text|Parse error/i.test(rendered.svg)) {
+          throw new Error("Invalid Mermaid syntax from model output");
+        }
         if (!mounted) {
           return;
         }
@@ -139,7 +156,7 @@ function MermaidDiagram({ code }: MermaidDiagramProps) {
   if (error) {
     return (
       <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
-        Mermaid diagram could not be rendered: {error}
+        Diagram unavailable for this response. Ask: "Regenerate Stage 2 with a valid mermaid flowchart only."
       </div>
     );
   }

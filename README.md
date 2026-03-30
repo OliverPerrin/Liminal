@@ -54,6 +54,7 @@ Note: next.config.ts maps SUPABASE_URL and SUPABASE_ANON_KEY into NEXT_PUBLIC_* 
 2. Run SQL migrations in order:
   - supabase/migrations/001_init.sql
   - supabase/migrations/002_storage_resumes_bucket.sql
+  - supabase/migrations/003_sessions_delete_policy.sql
 3. Ensure auth email/password provider is enabled.
 
 ## Local Development
