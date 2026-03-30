@@ -274,7 +274,7 @@ export function HomeView({ userId }: HomeViewProps) {
           </div>
         </aside>
 
-        <main className="flex min-h-0 h-[calc(100vh-7rem)] flex-col rounded-xl border border-app-border bg-app-panel">
+        <main className="flex min-h-0 h-[calc(100vh-4.75rem)] flex-col rounded-xl border border-app-border bg-app-panel">
           <div className="border-b border-app-border px-4 py-3">
             <h1 className="text-sm font-semibold">{activeTopic || "Start a session"}</h1>
             <p className="text-xs text-app-muted">Structured six-stage ML interview prep.</p>

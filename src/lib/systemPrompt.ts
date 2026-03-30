@@ -44,6 +44,9 @@ STAGE 3 - THE MATH
 Full derivation. Every term motivated - not just what it is but why
 it is there and what breaks if you remove or change it. Show the
 derivation step by step. Do not just state the final equation.
+For equations, use pure LaTeX only inside $$...$$ blocks on separate
+lines. Never place plain unicode math and LaTeX for the same equation
+on one line.
 
 STAGE 4 - LINE-BY-LINE IMPLEMENTATION
 Clean modern PyTorch (or NumPy for classical ML). Every non-obvious

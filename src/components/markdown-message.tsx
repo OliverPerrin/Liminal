@@ -86,11 +86,29 @@ function sanitizeMermaidCode(input: string): string {
     code = code.slice(flowchartIndex);
   }
 
+  // Keep likely mermaid syntax lines only and drop prose contamination.
+  const candidateLines = code
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => {
+      if (!line) return false;
+      return /^(flowchart|graph|subgraph|end|classDef|class|style|linkStyle|%%|[A-Za-z0-9_]+\s*(\[|\(|\{|-->|-.->|==>|---))/i.test(
+        line,
+      );
+    });
+
+  if (candidateLines.length > 0) {
+    code = candidateLines.join("\n");
+  }
+
   // Quote node labels to avoid parser failures with unicode/symbol-heavy labels.
   code = code.replace(/([A-Za-z][A-Za-z0-9_]*)\[([^\]\n]+)\]/g, (_m, id, label) => {
-    const safe = label.replace(/"/g, '\\"').trim();
+    const safe = label.replace(/\\"/g, '"').replace(/"/g, "").trim();
     return `${id}["${safe}"]`;
   });
+
+  // Fix accidentally doubled quoted labels like ["\"text\""]
+  code = code.replace(/\["\\?"([^\]]+?)\\?""\]/g, (_m, label) => `["${label}"]`);
 
   // Normalize unicode subscripts commonly emitted by LLMs.
   const subMap: Record<string, string> = {
@@ -110,6 +128,9 @@ function sanitizeMermaidCode(input: string): string {
   // Remove characters Mermaid commonly rejects in labels.
   code = code.replace(/[“”]/g, '"');
   code = code.replace(/[’]/g, "'");
+
+  // Mermaid expects semicolon-safe/line-safe declarations; normalize accidental sentence endings.
+  code = code.replace(/\.+$/gm, "");
 
   return code;
 }
