@@ -48,35 +48,6 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
     setStories((prev) => prev.filter((_, i) => i !== index));
   }
 
-  async function extractPdfText(file: File): Promise<string> {
-    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-      "pdfjs-dist/legacy/build/pdf.worker.mjs",
-      import.meta.url,
-    ).toString();
-
-    const data = await file.arrayBuffer();
-    const pdf = await pdfjs.getDocument({ data }).promise;
-    const parts: string[] = [];
-
-    for (let pageIndex = 1; pageIndex <= pdf.numPages; pageIndex += 1) {
-      const page = await pdf.getPage(pageIndex);
-      const content = await page.getTextContent();
-      const pageText = content.items
-        .map((item) => {
-          if ("str" in item) {
-            return item.str;
-          }
-
-          return "";
-        })
-        .join(" ");
-      parts.push(pageText);
-    }
-
-    return parts.join("\n");
-  }
-
   async function handleParseResume() {
     if (!resumeFile) {
       setError("Please upload a PDF resume first.");
@@ -87,20 +58,21 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
     setParsing(true);
 
     try {
-      const extractedText = await extractPdfText(resumeFile);
+      const formData = new FormData();
+      formData.append("resume", resumeFile);
 
       const parseResponse = await fetch("/api/parse-resume", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resume_text: extractedText }),
+        body: formData,
       });
 
       if (!parseResponse.ok) {
-        throw new Error("Failed to parse resume");
+        const details = await parseResponse.text();
+        throw new Error(details || "Failed to parse resume");
       }
 
       const payload = (await parseResponse.json()) as ParseResumeResponse;
-      setResumeText(payload.resume_text || extractedText);
+      setResumeText(payload.resume_text || "");
       setStories(
         (payload.star_stories || []).map((story) => ({
           ...story,

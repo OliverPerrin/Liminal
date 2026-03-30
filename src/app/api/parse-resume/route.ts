@@ -1,7 +1,8 @@
+import { PDFParse } from "pdf-parse";
 import { z } from "zod";
 import { assertEnv } from "@/lib/runtime-env";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5";
 const DEFAULT_ANTHROPIC_VERSION = "2023-06-01";
@@ -9,6 +10,40 @@ const DEFAULT_ANTHROPIC_VERSION = "2023-06-01";
 const requestSchema = z.object({
   resume_text: z.string().min(1),
 });
+
+async function getResumeTextFromRequest(request: Request): Promise<string> {
+  const contentType = request.headers.get("content-type") || "";
+
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const resumeFile = formData.get("resume");
+
+    if (!(resumeFile instanceof File)) {
+      throw new Error("Missing 'resume' PDF file in form data.");
+    }
+
+    const fileBuffer = Buffer.from(await resumeFile.arrayBuffer());
+    const parser = new PDFParse({ data: fileBuffer });
+    const parsedPdf = await parser.getText();
+    await parser.destroy();
+    const extracted = parsedPdf.text?.trim();
+
+    if (!extracted) {
+      throw new Error("Could not extract text from PDF.");
+    }
+
+    return extracted;
+  }
+
+  const body = await request.json();
+  const parsed = requestSchema.safeParse(body);
+
+  if (!parsed.success) {
+    throw new Error("Invalid request: expected resume_text or multipart resume file.");
+  }
+
+  return parsed.data.resume_text;
+}
 
 type StarStory = {
   id: string;
@@ -54,13 +89,7 @@ function parseJsonFromText(text: string): unknown {
 export async function POST(request: Request) {
   try {
     assertEnv(["ANTHROPIC_API_KEY"]);
-
-    const body = await request.json();
-    const parsed = requestSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return Response.json({ error: "Invalid request" }, { status: 400 });
-    }
+    const resumeText = await getResumeTextFromRequest(request);
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     const anthropicModel = process.env.ANTHROPIC_MODEL || DEFAULT_ANTHROPIC_MODEL;
@@ -102,7 +131,7 @@ Return ONLY valid JSON in the shape:
 Prefer 6-8 high quality STAR stories mapped to common behavioral interview prompts.
 
 Resume text:
-${parsed.data.resume_text}`,
+${resumeText}`,
           },
         ],
       }),
@@ -134,7 +163,7 @@ ${parsed.data.resume_text}`,
     }));
 
     return Response.json({
-      resume_text: parsedJson.resume_text || parsed.data.resume_text,
+      resume_text: parsedJson.resume_text || resumeText,
       star_stories: starStories,
     });
   } catch (error) {
