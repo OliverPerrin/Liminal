@@ -17,16 +17,40 @@ type MarkdownMessageProps = {
 function normalizeAssistantContent(raw: string): string {
   let text = raw;
 
+  // Strip zero-width characters that often appear in copied/generated math and break parsing.
+  text = text.replace(/[\u200B-\u200D\uFEFF]/g, "");
+
   // Ensure stage markers become markdown headers.
   text = text.replace(/^STAGE\s+(\d+)\s+-\s+(.+)$/gm, "## STAGE $1 - $2");
 
   // Repair a common malformed fraction token produced by LLMs.
   text = text.replace(/\\frac\{([^{}]+)\}\\partial\s*([a-zA-Z])/g, "\\frac{$1}{\\partial $2}");
+  text = text.replace(/\\frac\{([^{}]+)\}\\([a-zA-Z]+)/g, "\\frac{$1}{\\$2}");
+  text = text.replace(/\\frac\{([^{}]+)\}\s*\{?\\partial\s*([a-zA-Z0-9_{}^]+)\}?/g, "\\frac{$1}{\\partial $2}");
 
   // Convert common unicode derivative notation into KaTeX-friendly inline math.
   text = text.replace(/∂([A-Za-z][A-Za-z0-9]*)\s*\/\s*∂([A-Za-z][A-Za-z0-9]*)/g, (_m, top, bottom) => {
     return `$\\frac{\\partial ${top}}{\\partial ${bottom}}$`;
   });
+
+  // If a line mixes plain/unicode math before TeX, keep the TeX segment to avoid duplicate malformed output.
+  text = text
+    .split("\n")
+    .map((line) => {
+      const firstTex = line.indexOf("\\");
+      if (firstTex <= 0) {
+        return line;
+      }
+
+      const prefix = line.slice(0, firstTex);
+      const hasPlainMathPrefix = /[∂σ∇θλμρτϕψωαβγ]|[A-Za-z]\/[A-Za-z]|[=+\-]/.test(prefix);
+      if (!hasPlainMathPrefix) {
+        return line;
+      }
+
+      return line.slice(firstTex);
+    })
+    .join("\n");
 
   // Remove common plain-text prefixes accidentally glued before TeX commands.
   text = text.replace(/[A-Za-z0-9_]+(?=\\frac)/g, "");
