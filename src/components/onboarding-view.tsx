@@ -14,6 +14,31 @@ type ParseResumeResponse = {
   star_stories: StarStory[];
 };
 
+function getReadableError(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (error && typeof error === "object") {
+    const maybeError = error as {
+      message?: string;
+      details?: string;
+      hint?: string;
+      code?: string;
+    };
+
+    if (maybeError.message) {
+      const extras = [maybeError.details, maybeError.hint, maybeError.code]
+        .filter((value): value is string => Boolean(value && value.trim().length > 0))
+        .join(" | ");
+
+      return extras ? `${maybeError.message} (${extras})` : maybeError.message;
+    }
+  }
+
+  return fallback;
+}
+
 const EMPTY_STORY: StarStory = {
   id: "",
   title: "",
@@ -105,7 +130,7 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
         }
       }
     } catch (parseError) {
-      const message = parseError instanceof Error ? parseError.message : "Resume parse failed";
+      const message = getReadableError(parseError, "Resume parse failed");
       setError(message);
     } finally {
       setParsing(false);
@@ -136,7 +161,7 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
       router.push("/home");
       router.refresh();
     } catch (saveError) {
-      const message = saveError instanceof Error ? saveError.message : "Failed to save profile";
+      const message = getReadableError(saveError, "Failed to save profile");
       setError(message);
     } finally {
       setSaving(false);
