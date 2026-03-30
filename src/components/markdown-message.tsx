@@ -23,6 +23,11 @@ function normalizeAssistantContent(raw: string): string {
   // Repair a common malformed fraction token produced by LLMs.
   text = text.replace(/\\frac\{([^{}]+)\}\\partial\s*([a-zA-Z])/g, "\\frac{$1}{\\partial $2}");
 
+  // Convert common unicode derivative notation into KaTeX-friendly inline math.
+  text = text.replace(/∂([A-Za-z][A-Za-z0-9]*)\s*\/\s*∂([A-Za-z][A-Za-z0-9]*)/g, (_m, top, bottom) => {
+    return `$\\frac{\\partial ${top}}{\\partial ${bottom}}$`;
+  });
+
   // Wrap standalone equation lines in block math if they include TeX commands.
   text = text
     .split("\n")
@@ -44,6 +49,33 @@ function normalizeAssistantContent(raw: string): string {
   return text;
 }
 
+function sanitizeMermaidCode(input: string): string {
+  let code = input;
+
+  // Quote node labels to avoid parser failures with unicode/symbol-heavy labels.
+  code = code.replace(/([A-Za-z][A-Za-z0-9_]*)\[([^\]\n]+)\]/g, (_m, id, label) => {
+    const safe = label.replace(/"/g, '\\"').trim();
+    return `${id}["${safe}"]`;
+  });
+
+  // Normalize unicode subscripts commonly emitted by LLMs.
+  const subMap: Record<string, string> = {
+    "₀": "0",
+    "₁": "1",
+    "₂": "2",
+    "₃": "3",
+    "₄": "4",
+    "₅": "5",
+    "₆": "6",
+    "₇": "7",
+    "₈": "8",
+    "₉": "9",
+  };
+  code = code.replace(/[₀₁₂₃₄₅₆₇₈₉]/g, (char) => subMap[char] ?? char);
+
+  return code;
+}
+
 type MermaidDiagramProps = {
   code: string;
 };
@@ -58,6 +90,7 @@ function MermaidDiagram({ code }: MermaidDiagramProps) {
 
     async function render() {
       try {
+        const sanitizedCode = sanitizeMermaidCode(code);
         const mermaid = (await import("mermaid")).default;
         mermaid.initialize({
           startOnLoad: false,
@@ -78,7 +111,7 @@ function MermaidDiagram({ code }: MermaidDiagramProps) {
           },
         });
 
-        const rendered = await mermaid.render(`mermaid-${id}`, code);
+        const rendered = await mermaid.render(`mermaid-${id}`, sanitizedCode);
         if (!mounted) {
           return;
         }

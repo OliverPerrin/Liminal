@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, PanelRightClose, PanelRightOpen, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, PanelRightClose, PanelRightOpen, Search, Trash2 } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -192,6 +192,28 @@ export function HomeView({ userId }: HomeViewProps) {
     setMessages((sessionRecord.messages as SessionMessage[]) || []);
   }
 
+  async function deleteSession(sessionRecord: SessionRecord) {
+    const supabase = getSupabaseBrowserClient();
+    const { error } = await supabase
+      .from("sessions")
+      .delete()
+      .eq("id", sessionRecord.id)
+      .eq("user_id", userId);
+
+    if (error) {
+      setChatError(error.message);
+      return;
+    }
+
+    if (sessionId === sessionRecord.id) {
+      setSessionId(null);
+      setMessages([]);
+      setActiveTopic(null);
+    }
+
+    await loadSessions();
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <AppHeader />
@@ -252,7 +274,7 @@ export function HomeView({ userId }: HomeViewProps) {
           </div>
         </aside>
 
-        <main className="flex min-h-[80vh] flex-col rounded-xl border border-app-border bg-app-panel">
+        <main className="flex min-h-0 h-[calc(100vh-7rem)] flex-col rounded-xl border border-app-border bg-app-panel">
           <div className="border-b border-app-border px-4 py-3">
             <h1 className="text-sm font-semibold">{activeTopic || "Start a session"}</h1>
             <p className="text-xs text-app-muted">Structured six-stage ML interview prep.</p>
@@ -298,7 +320,7 @@ export function HomeView({ userId }: HomeViewProps) {
                 shouldReset,
               );
             }}
-            className="grid gap-2 border-t border-app-border p-3 md:grid-cols-[220px_minmax(0,1fr)_auto]"
+            className="sticky bottom-0 z-10 grid gap-2 border-t border-app-border bg-app-panel/95 p-3 backdrop-blur md:grid-cols-[220px_minmax(0,1fr)_auto]"
           >
             <input
               value={topicDraft}
@@ -337,20 +359,36 @@ export function HomeView({ userId }: HomeViewProps) {
           {historyOpen ? (
             <div className="space-y-2 overflow-y-auto">
               {sessions.map((sessionRecord) => (
-                <button
+                <div
                   key={sessionRecord.id}
-                  type="button"
-                  onClick={() => openSession(sessionRecord)}
                   className={cn(
-                    "w-full rounded-lg border border-app-border bg-app-panel-2 p-2 text-left",
+                    "rounded-lg border border-app-border bg-app-panel-2 p-2",
                     sessionRecord.id === sessionId && "border-app-accent",
                   )}
                 >
-                  <p className="truncate text-sm">{sessionRecord.topic}</p>
-                  <p className="mt-1 text-[11px] text-app-muted">
-                    {new Date(sessionRecord.created_at).toLocaleString()}
-                  </p>
-                </button>
+                  <div className="flex items-start justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openSession(sessionRecord)}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <p className="truncate text-sm">{sessionRecord.topic}</p>
+                      <p className="mt-1 text-[11px] text-app-muted">
+                        {new Date(sessionRecord.created_at).toLocaleString()}
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => void deleteSession(sessionRecord)}
+                      className="rounded border border-app-border p-1 text-app-muted hover:border-red-400/50 hover:text-red-300"
+                      aria-label="Delete session"
+                      title="Delete session"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           ) : null}
