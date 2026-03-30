@@ -10,18 +10,20 @@ export function AuthView() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setNotice(null);
     setLoading(true);
 
     const supabase = getSupabaseBrowserClient();
 
     try {
       if (isSignup) {
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -31,6 +33,15 @@ export function AuthView() {
 
         if (signUpError) {
           throw signUpError;
+        }
+
+        // Supabase may require email confirmation before a session is created.
+        if (!data.session) {
+          setNotice(
+            "Account created. Check your email and confirm your address before logging in.",
+          );
+          setIsSignup(false);
+          return;
         }
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -47,7 +58,12 @@ export function AuthView() {
       router.refresh();
     } catch (submitError) {
       const message = submitError instanceof Error ? submitError.message : "Authentication failed";
-      setError(message);
+
+      if (message.toLowerCase().includes("email not confirmed")) {
+        setError("Email not confirmed. Check your inbox for the Supabase confirmation email.");
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -83,6 +99,7 @@ export function AuthView() {
             />
           </label>
 
+          {notice ? <p className="text-sm text-emerald-300">{notice}</p> : null}
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
           <button
@@ -96,7 +113,11 @@ export function AuthView() {
 
         <button
           type="button"
-          onClick={() => setIsSignup((prev) => !prev)}
+          onClick={() => {
+            setIsSignup((prev) => !prev);
+            setError(null);
+            setNotice(null);
+          }}
           className="mt-4 text-sm text-app-muted underline underline-offset-4"
         >
           {isSignup ? "Already have an account? Log in" : "Need an account? Sign up"}
