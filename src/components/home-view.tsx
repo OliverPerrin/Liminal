@@ -24,6 +24,7 @@ export function HomeView({ userId }: HomeViewProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({});
+  const [chatError, setChatError] = useState<string | null>(null);
 
   useEffect(() => {
     setExpandedDomains(
@@ -91,7 +92,12 @@ export function HomeView({ userId }: HomeViewProps) {
     });
 
     if (!response.ok || !response.body) {
-      throw new Error("Session request failed");
+      const errorPayload = await response.json().catch(() => null) as
+        | { error?: string; details?: string }
+        | null;
+      const message = errorPayload?.error || "Session request failed";
+      const details = errorPayload?.details;
+      throw new Error(details ? `${message}: ${details}` : message);
     }
 
     const serverSessionId = response.headers.get("x-session-id");
@@ -142,6 +148,7 @@ export function HomeView({ userId }: HomeViewProps) {
       return;
     }
 
+    setChatError(null);
     setIsStreaming(true);
 
     try {
@@ -164,6 +171,9 @@ export function HomeView({ userId }: HomeViewProps) {
 
       await streamSession(topic, baseMessages, currentSessionId);
       setMessageInput("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to run session";
+      setChatError(message);
     } finally {
       setIsStreaming(false);
     }
@@ -185,7 +195,14 @@ export function HomeView({ userId }: HomeViewProps) {
   return (
     <div className="flex min-h-screen flex-col">
       <AppHeader />
-      <div className="mx-auto grid w-full max-w-[1700px] flex-1 grid-cols-1 gap-4 px-3 py-3 lg:grid-cols-[320px_minmax(0,1fr)_320px]">
+      <div
+        className={cn(
+          "mx-auto grid w-full max-w-[1700px] flex-1 grid-cols-1 gap-4 px-3 py-3",
+          historyOpen
+            ? "lg:grid-cols-[320px_minmax(0,1fr)_320px]"
+            : "lg:grid-cols-[320px_minmax(0,1fr)_52px]",
+        )}
+      >
         <aside className="rounded-xl border border-app-border bg-app-panel p-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-app-muted" />
@@ -242,6 +259,12 @@ export function HomeView({ userId }: HomeViewProps) {
           </div>
 
           <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+            {chatError ? (
+              <div className="rounded-lg border border-red-400/40 bg-red-500/10 p-3 text-sm text-red-200">
+                {chatError}
+              </div>
+            ) : null}
+
             {messages.length === 0 ? (
               <div className="rounded-lg border border-dashed border-app-border bg-app-panel-2 p-4 text-sm text-app-muted">
                 Select a topic from the left panel or type a custom topic below.
@@ -299,9 +322,9 @@ export function HomeView({ userId }: HomeViewProps) {
           </form>
         </main>
 
-        <aside className="rounded-xl border border-app-border bg-app-panel p-3">
+        <aside className={cn("rounded-xl border border-app-border bg-app-panel", historyOpen ? "p-3" : "p-2") }>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Session History</h2>
+            {historyOpen ? <h2 className="text-sm font-semibold">Session History</h2> : <span />}
             <button
               type="button"
               onClick={() => setHistoryOpen((prev) => !prev)}

@@ -63,8 +63,6 @@ function parseSseChunk(chunk: string): string {
 export async function POST(request: Request) {
   try {
     assertEnv([
-      "NEXT_PUBLIC_SUPABASE_URL",
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
       "SUPABASE_SERVICE_ROLE_KEY",
       "ANTHROPIC_API_KEY",
     ]);
@@ -83,8 +81,9 @@ export async function POST(request: Request) {
       return Response.json({ error: "Missing authorization header" }, { status: 401 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey =
+      process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
     const anthropicModel = process.env.ANTHROPIC_MODEL || DEFAULT_ANTHROPIC_MODEL;
@@ -92,7 +91,13 @@ export async function POST(request: Request) {
       process.env.ANTHROPIC_API_VERSION || DEFAULT_ANTHROPIC_VERSION;
 
     if (!supabaseUrl || !supabaseAnonKey || !serviceRole || !anthropicApiKey) {
-      return Response.json({ error: "Missing required server environment variables" }, { status: 500 });
+      return Response.json(
+        {
+          error:
+            "Missing required server environment variables (SUPABASE_URL/SUPABASE_ANON_KEY/SUPABASE_SERVICE_ROLE_KEY/ANTHROPIC_API_KEY)",
+        },
+        { status: 500 },
+      );
     }
 
     const authClient = createClient(supabaseUrl, supabaseAnonKey, {
