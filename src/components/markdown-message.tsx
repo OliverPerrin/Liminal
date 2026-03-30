@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useId, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -19,19 +20,103 @@ function normalizeAssistantContent(raw: string): string {
   // Ensure stage markers become markdown headers.
   text = text.replace(/^STAGE\s+(\d+)\s+-\s+(.+)$/gm, "## STAGE $1 - $2");
 
-  // Fix common duplicated artifact pattern: plainText\latexPlainText.
-  text = text.replace(
-    /[^\s\\]{1,40}(\\[a-zA-Z]+(?:\{[^{}\n]{1,120}\}|\[[^\]\n]{1,120}\}|_[^\s]+|\^[^\s]+){1,6})[^\s\\]{1,40}/g,
-    (_match, latex) => `$${latex}$`,
-  );
+  // Repair a common malformed fraction token produced by LLMs.
+  text = text.replace(/\\frac\{([^{}]+)\}\\partial\s*([a-zA-Z])/g, "\\frac{$1}{\\partial $2}");
 
-  // Wrap standalone LaTeX command sequences so KaTeX can render them.
-  text = text.replace(
-    /(^|[^$`])(\\(?:frac|partial|sigma|cdot|odot|hat|bar|mathbf|mathbb|sum|prod|nabla|alpha|beta|gamma|theta|lambda|mu|nu|pi|rho|tau|phi|psi|omega)(?:\{[^{}\n]*\}|\[[^\]\n]*\]|_[^\s]+|\^[^\s]+){1,8})(?=[^$`]|$)/g,
-    (_match, prefix, latex) => `${prefix}$${latex}$`,
-  );
+  // Wrap standalone equation lines in block math if they include TeX commands.
+  text = text
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("$") || trimmed.startsWith("```") || trimmed.startsWith("<")) {
+        return line;
+      }
+
+      const looksLikeEquation =
+        /\\(frac|partial|sigma|cdot|odot|hat|bar|mathbf|mathbb|sum|prod|nabla|alpha|beta|gamma|theta|lambda|mu|nu|pi|rho|tau|phi|psi|omega)/.test(
+          trimmed,
+        ) && /[=+\-]/.test(trimmed);
+
+      return looksLikeEquation ? `$$\n${trimmed}\n$$` : line;
+    })
+    .join("\n");
 
   return text;
+}
+
+type MermaidDiagramProps = {
+  code: string;
+};
+
+function MermaidDiagram({ code }: MermaidDiagramProps) {
+  const [svg, setSvg] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+  const id = useId().replace(/[:]/g, "-");
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function render() {
+      try {
+        const mermaid = (await import("mermaid")).default;
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: "base",
+          themeVariables: {
+            background: "#0b1220",
+            primaryColor: "#111827",
+            primaryTextColor: "#e5e7eb",
+            primaryBorderColor: "#334155",
+            lineColor: "#93c5fd",
+            tertiaryColor: "#0f172a",
+            fontFamily: "ui-sans-serif, system-ui, sans-serif",
+          },
+          securityLevel: "loose",
+          flowchart: {
+            curve: "basis",
+            htmlLabels: true,
+          },
+        });
+
+        const rendered = await mermaid.render(`mermaid-${id}`, code);
+        if (!mounted) {
+          return;
+        }
+
+        setSvg(rendered.svg);
+        setError(null);
+      } catch (renderError) {
+        if (!mounted) {
+          return;
+        }
+
+        const message =
+          renderError instanceof Error ? renderError.message : "Failed to render mermaid diagram.";
+        setError(message);
+      }
+    }
+
+    void render();
+
+    return () => {
+      mounted = false;
+    };
+  }, [code, id]);
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+        Mermaid diagram could not be rendered: {error}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="overflow-x-auto rounded-lg border border-app-border bg-app-panel-2 p-3"
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
 }
 
 const svgSchema = {
@@ -78,7 +163,7 @@ const svgSchema = {
 };
 
 export function MarkdownMessage({ content }: MarkdownMessageProps) {
-  const normalizedContent = normalizeAssistantContent(content);
+  const normalizedContent = useMemo(() => normalizeAssistantContent(content), [content]);
 
   return (
     <div className="prose prose-invert max-w-none prose-pre:bg-transparent prose-code:text-app-fg">
@@ -90,6 +175,11 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
             const { children, className } = props;
             const match = /language-(\w+)/.exec(className || "");
             const language = match?.[1];
+            const code = String(children).replace(/\n$/, "");
+
+            if (language === "mermaid") {
+              return <MermaidDiagram code={code} />;
+            }
 
             if (!language) {
               return <code className="rounded bg-app-panel-2 px-1 py-0.5">{children}</code>;
@@ -106,7 +196,7 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
                   background: "#0b1220",
                 }}
               >
-                {String(children).replace(/\n$/, "")}
+                {code}
               </SyntaxHighlighter>
             );
           },
