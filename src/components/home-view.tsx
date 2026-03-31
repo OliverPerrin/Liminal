@@ -1,7 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, PanelRightClose, PanelRightOpen, Search, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Loader2,
+  PanelRightClose,
+  PanelRightOpen,
+  Search,
+  Send,
+  Trash2,
+} from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -25,6 +35,21 @@ export function HomeView({ userId }: HomeViewProps) {
   const [historyOpen, setHistoryOpen] = useState(true);
   const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({});
   const [chatError, setChatError] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 150)}px`;
+  }, [messageInput]);
 
   useEffect(() => {
     setExpandedDomains(
@@ -51,9 +76,7 @@ export function HomeView({ userId }: HomeViewProps) {
   }, [loadSessions]);
 
   const filteredDomains = useMemo(() => {
-    if (!query.trim()) {
-      return TOPIC_TAXONOMY;
-    }
+    if (!query.trim()) return TOPIC_TAXONOMY;
 
     const normalized = query.toLowerCase();
     return TOPIC_TAXONOMY.map((domain) => ({
@@ -92,7 +115,7 @@ export function HomeView({ userId }: HomeViewProps) {
     });
 
     if (!response.ok || !response.body) {
-      const errorPayload = await response.json().catch(() => null) as
+      const errorPayload = (await response.json().catch(() => null)) as
         | { error?: string; details?: string }
         | null;
       const message = errorPayload?.error || "Session request failed";
@@ -113,23 +136,15 @@ export function HomeView({ userId }: HomeViewProps) {
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
+      if (done) break;
 
       const chunk = decoder.decode(value, { stream: true });
       assistantText += chunk;
 
       setMessages((prev) => {
-        if (!prev.length) {
-          return prev;
-        }
-
+        if (!prev.length) return prev;
         const copy = [...prev];
-        copy[copy.length - 1] = {
-          ...copy[copy.length - 1],
-          content: assistantText,
-        };
+        copy[copy.length - 1] = { ...copy[copy.length - 1], content: assistantText };
         return copy;
       });
     }
@@ -138,15 +153,11 @@ export function HomeView({ userId }: HomeViewProps) {
   }
 
   async function sendMessage(rawTopic: string, rawMessage: string, resetSession: boolean) {
-    if (isStreaming) {
-      return;
-    }
+    if (isStreaming) return;
 
     const topic = rawTopic.trim();
     const userMessage = rawMessage.trim();
-    if (!topic || !userMessage) {
-      return;
-    }
+    if (!topic || !userMessage) return;
 
     setChatError(null);
     setIsStreaming(true);
@@ -214,52 +225,75 @@ export function HomeView({ userId }: HomeViewProps) {
     await loadSessions();
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      const topic = (topicDraft || activeTopic || "Custom Topic").trim();
+      const shouldReset = !sessionId || (activeTopic ? topic !== activeTopic : false);
+      void sendMessage(topic, messageInput, shouldReset);
+    }
+  }
+
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
       <AppHeader />
       <div
         className={cn(
-          "mx-auto grid w-full max-w-[1700px] flex-1 grid-cols-1 gap-4 px-3 py-3",
+          "mx-auto grid w-full max-w-[1800px] flex-1 gap-0 overflow-hidden lg:gap-px",
           historyOpen
-            ? "lg:grid-cols-[320px_minmax(0,1fr)_320px]"
-            : "lg:grid-cols-[320px_minmax(0,1fr)_52px]",
+            ? "lg:grid-cols-[300px_minmax(0,1fr)_280px]"
+            : "lg:grid-cols-[300px_minmax(0,1fr)_48px]",
         )}
       >
-        <aside className="rounded-xl border border-app-border bg-app-panel p-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-app-muted" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search topics"
-              className="w-full rounded-lg border border-app-border bg-app-panel-2 py-2 pl-9 pr-3 text-sm"
-            />
+        {/* Topic Browser */}
+        <aside className="hidden overflow-hidden border-r border-app-border bg-app-panel lg:flex lg:flex-col">
+          <div className="border-b border-app-border p-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-app-muted" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search topics..."
+                className="w-full rounded-lg border border-app-border bg-app-bg px-3 py-2 pl-8 text-sm text-app-fg placeholder:text-app-muted/60 focus:border-app-accent/50 focus:outline-none focus:ring-1 focus:ring-app-accent/25"
+              />
+            </div>
           </div>
 
-          <div className="mt-4 space-y-2 overflow-y-auto pr-1">
+          <div className="flex-1 overflow-y-auto p-2">
             {filteredDomains.map((domain) => (
-              <div key={domain.name} className="rounded-lg border border-app-border bg-app-panel-2/40">
+              <div key={domain.name} className="mb-1">
                 <button
                   type="button"
                   onClick={() => setExpandedDomains((prev) => ({ ...prev, [domain.name]: !prev[domain.name] }))}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium"
+                  className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wider text-app-muted hover:bg-app-panel-2 hover:text-app-fg"
                 >
-                  {expandedDomains[domain.name] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  {expandedDomains[domain.name] ? (
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                  )}
                   {domain.name}
                 </button>
 
-                {expandedDomains[domain.name] ? (
-                  <div className="space-y-2 px-3 pb-3">
+                {expandedDomains[domain.name] && (
+                  <div className="ml-2 space-y-2 py-1">
                     {domain.sections.map((section) => (
                       <div key={`${domain.name}-${section.title}`}>
-                        <p className="mb-1 text-xs uppercase tracking-wide text-app-muted">{section.title}</p>
-                        <div className="flex flex-wrap gap-1.5">
+                        {section.title && (
+                          <p className="mb-1 px-2 text-[10px] font-medium uppercase tracking-widest text-app-muted/60">
+                            {section.title}
+                          </p>
+                        )}
+                        <div className="space-y-px">
                           {section.topics.map((topic) => (
                             <button
                               type="button"
                               key={topic}
                               onClick={() => startTopic(topic)}
-                              className="rounded-md border border-app-border px-2 py-1 text-xs text-app-muted hover:border-app-accent hover:text-app-fg"
+                              className={cn(
+                                "w-full rounded-md px-2 py-1 text-left text-[13px] text-app-muted transition-colors hover:bg-app-accent/10 hover:text-app-fg",
+                                activeTopic === topic && "bg-app-accent/10 text-app-accent",
+                              )}
                             >
                               {topic}
                             </button>
@@ -268,130 +302,198 @@ export function HomeView({ userId }: HomeViewProps) {
                       </div>
                     ))}
                   </div>
-                ) : null}
+                )}
               </div>
             ))}
           </div>
         </aside>
 
-        <main className="flex min-h-0 h-[calc(100vh-4.75rem)] flex-col rounded-xl border border-app-border bg-app-panel">
-          <div className="border-b border-app-border px-4 py-3">
-            <h1 className="text-sm font-semibold">{activeTopic || "Start a session"}</h1>
-            <p className="text-xs text-app-muted">Structured six-stage ML interview prep.</p>
+        {/* Main Chat Area */}
+        <main className="flex min-h-0 flex-col bg-app-bg">
+          {/* Header */}
+          <div className="flex items-center gap-3 border-b border-app-border bg-app-panel px-5 py-3">
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-sm font-semibold text-app-fg">
+                {activeTopic || "New Session"}
+              </h1>
+              <p className="text-xs text-app-muted">Structured six-stage ML interview prep</p>
+            </div>
+            {isStreaming && (
+              <div className="flex items-center gap-1.5 text-xs text-app-accent">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Generating</span>
+              </div>
+            )}
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-            {chatError ? (
-              <div className="rounded-lg border border-red-400/40 bg-red-500/10 p-3 text-sm text-red-200">
-                {chatError}
-              </div>
-            ) : null}
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
+              {chatError && (
+                <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-300">
+                  {chatError}
+                </div>
+              )}
 
-            {messages.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-app-border bg-app-panel-2 p-4 text-sm text-app-muted">
-                Select a topic from the left panel or type a custom topic below.
-              </div>
-            ) : null}
+              {messages.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="mb-4 rounded-full bg-app-accent/10 p-4">
+                    <Search className="h-6 w-6 text-app-accent" />
+                  </div>
+                  <h2 className="mb-2 text-lg font-medium text-app-fg">Start a session</h2>
+                  <p className="max-w-md text-sm text-app-muted">
+                    Pick a topic from the sidebar or type a custom topic below to begin a structured learning session.
+                  </p>
+                </div>
+              )}
 
-            {messages.map((message, index) => (
-              <article
-                key={`${message.createdAt}-${index}`}
-                className={cn(
-                  "rounded-lg border p-3",
-                  message.role === "assistant"
-                    ? "border-app-border bg-app-panel-2"
-                    : "border-sky-400/30 bg-sky-500/10",
-                )}
-              >
-                <p className="mb-2 text-[11px] uppercase tracking-wide text-app-muted">{message.role}</p>
-                <MarkdownMessage content={message.content || "..."} />
-              </article>
-            ))}
+              <div className="space-y-6">
+                {messages.map((message, index) => (
+                  <div
+                    key={`${message.createdAt}-${index}`}
+                    className={cn(
+                      "rounded-xl",
+                      message.role === "user"
+                        ? "ml-auto max-w-2xl rounded-br-sm bg-app-accent/10 px-4 py-3"
+                        : "",
+                    )}
+                  >
+                    {message.role === "user" && (
+                      <p className="text-[15px] leading-relaxed text-app-fg">{message.content}</p>
+                    )}
+                    {message.role === "assistant" && (
+                      <div className="min-w-0">
+                        <MarkdownMessage content={message.content || "..."} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div ref={messagesEndRef} />
+            </div>
           </div>
 
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              const topic = (topicDraft || activeTopic || "Custom Topic").trim();
-              const shouldReset = !sessionId || (activeTopic ? topic !== activeTopic : false);
-              void sendMessage(
-                topic,
-                messageInput,
-                shouldReset,
-              );
-            }}
-            className="sticky bottom-0 z-10 grid gap-2 border-t border-app-border bg-app-panel/95 p-3 backdrop-blur md:grid-cols-[220px_minmax(0,1fr)_auto]"
-          >
-            <input
-              value={topicDraft}
-              onChange={(event) => setTopicDraft(event.target.value)}
-              placeholder="Topic"
-              className="rounded-lg border border-app-border bg-app-panel-2 px-3 py-2 text-sm"
-            />
-            <input
-              value={messageInput}
-              onChange={(event) => setMessageInput(event.target.value)}
-              placeholder="Type a free topic request or ask a follow-up"
-              className="rounded-lg border border-app-border bg-app-panel-2 px-3 py-2 text-sm"
-            />
-            <button
-              type="submit"
-              disabled={isStreaming}
-              className="rounded-lg bg-app-accent px-4 py-2 text-sm font-semibold text-black disabled:opacity-60"
-            >
-              {isStreaming ? "Streaming..." : "Send"}
-            </button>
-          </form>
+          {/* Input Area */}
+          <div className="border-t border-app-border bg-app-panel p-3 sm:p-4">
+            <div className="mx-auto max-w-4xl">
+              <div className="flex items-end gap-2">
+                <input
+                  value={topicDraft}
+                  onChange={(e) => setTopicDraft(e.target.value)}
+                  placeholder="Topic"
+                  className="hidden w-44 shrink-0 rounded-lg border border-app-border bg-app-bg px-3 py-2 text-sm text-app-fg placeholder:text-app-muted/60 focus:border-app-accent/50 focus:outline-none focus:ring-1 focus:ring-app-accent/25 sm:block"
+                />
+                <div className="relative min-w-0 flex-1">
+                  <textarea
+                    ref={textareaRef}
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Ask a question or type 'continue'..."
+                    rows={1}
+                    className="w-full resize-none rounded-lg border border-app-border bg-app-bg px-3 py-2 pr-10 text-sm text-app-fg placeholder:text-app-muted/60 focus:border-app-accent/50 focus:outline-none focus:ring-1 focus:ring-app-accent/25"
+                  />
+                  <button
+                    type="button"
+                    disabled={isStreaming || !messageInput.trim()}
+                    onClick={() => {
+                      const topic = (topicDraft || activeTopic || "Custom Topic").trim();
+                      const shouldReset = !sessionId || (activeTopic ? topic !== activeTopic : false);
+                      void sendMessage(topic, messageInput, shouldReset);
+                    }}
+                    className="absolute bottom-2 right-2 rounded-md p-1 text-app-muted transition-colors hover:text-app-accent disabled:opacity-30"
+                  >
+                    {isStreaming ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              <p className="mt-1.5 text-[11px] text-app-muted/50 sm:hidden">
+                Shift+Enter for new line
+              </p>
+            </div>
+          </div>
         </main>
 
-        <aside className={cn("rounded-xl border border-app-border bg-app-panel", historyOpen ? "p-3" : "p-2") }>
-          <div className="mb-3 flex items-center justify-between">
-            {historyOpen ? <h2 className="text-sm font-semibold">Session History</h2> : <span />}
+        {/* Session History Sidebar */}
+        <aside
+          className={cn(
+            "hidden border-l border-app-border bg-app-panel lg:flex lg:flex-col",
+            !historyOpen && "items-center",
+          )}
+        >
+          <div className="flex items-center justify-between border-b border-app-border p-2">
+            {historyOpen && (
+              <span className="px-1 text-xs font-semibold uppercase tracking-wider text-app-muted">
+                History
+              </span>
+            )}
             <button
               type="button"
               onClick={() => setHistoryOpen((prev) => !prev)}
-              className="rounded border border-app-border p-1 text-app-muted"
+              className="rounded-md p-1.5 text-app-muted transition-colors hover:bg-app-panel-2 hover:text-app-fg"
             >
               {historyOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
             </button>
           </div>
 
-          {historyOpen ? (
-            <div className="space-y-2 overflow-y-auto">
-              {sessions.map((sessionRecord) => (
-                <div
-                  key={sessionRecord.id}
-                  className={cn(
-                    "rounded-lg border border-app-border bg-app-panel-2 p-2",
-                    sessionRecord.id === sessionId && "border-app-accent",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openSession(sessionRecord)}
-                      className="min-w-0 flex-1 text-left"
-                    >
-                      <p className="truncate text-sm">{sessionRecord.topic}</p>
-                      <p className="mt-1 text-[11px] text-app-muted">
-                        {new Date(sessionRecord.created_at).toLocaleString()}
-                      </p>
-                    </button>
+          {historyOpen && (
+            <div className="flex-1 overflow-y-auto p-2">
+              <div className="space-y-1">
+                {sessions.map((sessionRecord) => (
+                  <div
+                    key={sessionRecord.id}
+                    className={cn(
+                      "group rounded-lg p-2 transition-colors hover:bg-app-panel-2",
+                      sessionRecord.id === sessionId && "bg-app-accent/10",
+                    )}
+                  >
+                    <div className="flex items-start gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => openSession(sessionRecord)}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <p
+                          className={cn(
+                            "truncate text-[13px]",
+                            sessionRecord.id === sessionId ? "text-app-accent" : "text-app-fg",
+                          )}
+                        >
+                          {sessionRecord.topic}
+                        </p>
+                        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-app-muted/60">
+                          <Clock className="h-3 w-3" />
+                          {new Date(sessionRecord.created_at).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </p>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => void deleteSession(sessionRecord)}
-                      className="rounded border border-app-border p-1 text-app-muted hover:border-red-400/50 hover:text-red-300"
-                      aria-label="Delete session"
-                      title="Delete session"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => void deleteSession(sessionRecord)}
+                        className="shrink-0 rounded p-1 text-app-muted/40 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                        aria-label="Delete session"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+
+                {sessions.length === 0 && (
+                  <p className="px-2 py-4 text-center text-xs text-app-muted/50">
+                    No sessions yet
+                  </p>
+                )}
+              </div>
             </div>
-          ) : null}
+          )}
         </aside>
       </div>
     </div>

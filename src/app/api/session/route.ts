@@ -28,84 +28,6 @@ type ProfileRecord = {
   extra_context: string | null;
 };
 
-function extractAnthropicText(payload: unknown): string {
-  if (!payload || typeof payload !== "object") {
-    return "";
-  }
-
-  const content = (payload as { content?: Array<{ type?: string; text?: string }> }).content;
-  if (!Array.isArray(content)) {
-    return "";
-  }
-
-  return content
-    .filter((item) => item.type === "text" && typeof item.text === "string")
-    .map((item) => item.text as string)
-    .join("\n")
-    .trim();
-}
-
-function shouldPolishResponse(text: string): boolean {
-  return /STAGE\s+2|STAGE\s+3/i.test(text);
-}
-
-async function polishAssistantResponse(params: {
-  text: string;
-  topic: string;
-  apiKey: string;
-  model: string;
-  anthropicVersion: string;
-}): Promise<string> {
-  const { text, topic, apiKey, model, anthropicVersion } = params;
-
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": anthropicVersion,
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 5000,
-        temperature: 0,
-        messages: [
-          {
-            role: "user",
-            content: `Rewrite the following assistant answer for topic "${topic}" with strict formatting only. Preserve technical meaning exactly.
-
-Rules:
-1. Keep stage headers as markdown headers: ## STAGE X - ...
-2. For STAGE 2, include exactly one valid Mermaid block:
-\`\`\`mermaid
-flowchart LR
-...
-\`\`\`
-No prose inside the mermaid block.
-3. For STAGE 3 equations, use valid LaTeX only (no unicode math clutter), with block equations in $$...$$.
-4. Remove malformed or duplicate equation fragments.
-5. Output only rewritten markdown.
-
-Original answer:
-${text}`,
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      return text;
-    }
-
-    const payload = await response.json();
-    const polished = extractAnthropicText(payload);
-    return polished || text;
-  } catch {
-    return text;
-  }
-}
-
 function parseSseEventsWithBuffer(buffer: string): {
   textDelta: string;
   remainder: string;
@@ -323,9 +245,10 @@ export async function POST(request: Request) {
 
           if (textDelta) {
             assistantText += textDelta;
+            controller.enqueue(encoder.encode(textDelta));
 
             const now = Date.now();
-            if (now - lastPersistAt > 1200) {
+            if (now - lastPersistAt > 2000) {
               await persistAssistantMessage(assistantText);
               lastPersistAt = now;
             }
@@ -337,22 +260,10 @@ export async function POST(request: Request) {
         const parsedFinal = parseSseEventsWithBuffer(`${sseRemainder}${flushChunk}`);
         if (parsedFinal.textDelta) {
           assistantText += parsedFinal.textDelta;
+          controller.enqueue(encoder.encode(parsedFinal.textDelta));
         }
 
-        let finalText = assistantText;
-        if (shouldPolishResponse(finalText)) {
-          finalText = await polishAssistantResponse({
-            text: finalText,
-            topic: requestData.topic,
-            apiKey: anthropicApiKey,
-            model: anthropicModel,
-            anthropicVersion,
-          });
-        }
-
-        controller.enqueue(encoder.encode(finalText));
-
-        await persistAssistantMessage(finalText);
+        await persistAssistantMessage(assistantText);
 
         controller.close();
       },
