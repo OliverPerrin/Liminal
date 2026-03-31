@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -101,17 +101,52 @@ function sanitizeMermaidCode(input: string): string {
   return code;
 }
 
+/** Remove any stray DOM elements that Mermaid injects into document.body on parse errors. */
+function cleanupMermaidArtifacts(idPrefix: string) {
+  if (typeof document === "undefined") return;
+  // Mermaid creates elements with id "d{renderID}" and sometimes leaves error text nodes
+  document.querySelectorAll(`[id^="d${idPrefix}"], [id^="${idPrefix}"]`).forEach((el) => el.remove());
+  // Also remove any orphaned error text that Mermaid dumps into body
+  const body = document.body;
+  for (let i = body.childNodes.length - 1; i >= 0; i--) {
+    const node = body.childNodes[i];
+    if (
+      node.nodeType === Node.TEXT_NODE &&
+      node.textContent &&
+      /Syntax error in text|mermaid version/i.test(node.textContent)
+    ) {
+      node.remove();
+    }
+    // Mermaid also creates <div id="d..."> containers for failed renders
+    if (
+      node instanceof HTMLElement &&
+      (node.id.startsWith("d") || node.id.startsWith("mermaid")) &&
+      node.style.position === "absolute"
+    ) {
+      node.remove();
+    }
+  }
+}
+
+let mermaidCounter = 0;
+
 function MermaidDiagram({ code }: { code: string }) {
   const [svg, setSvg] = useState<string>("");
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
-  const id = useId().replace(/[:]/g, "-");
-  const containerRef = useRef<HTMLDivElement>(null);
+  const idPrefix = useRef(`mmd-${++mermaidCounter}`).current;
 
   useEffect(() => {
     let mounted = true;
+    // Debounce: during streaming the code changes every ~50ms — wait until it stabilizes
+    const timer = setTimeout(async () => {
+      if (!mounted) return;
 
-    async function render() {
+      // Create an offscreen container so Mermaid errors don't pollute the visible page
+      const offscreen = document.createElement("div");
+      offscreen.style.cssText = "position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;";
+      document.body.appendChild(offscreen);
+
       try {
         const sanitizedCode = sanitizeMermaidCode(code);
         const mermaid = (await import("mermaid")).default;
@@ -133,20 +168,37 @@ function MermaidDiagram({ code }: { code: string }) {
           flowchart: { curve: "basis", htmlLabels: true, padding: 16 },
         });
 
-        const rendered = await mermaid.render(`mermaid-${id}`, sanitizedCode);
+        const renderId = `${idPrefix}-${Date.now()}`;
+        const rendered = await mermaid.render(renderId, sanitizedCode, offscreen);
         if (!mounted) return;
-        setSvg(rendered.svg);
+
+        // Make the SVG responsive: remove hardcoded width/height, keep viewBox
+        let responsiveSvg = rendered.svg;
+        responsiveSvg = responsiveSvg.replace(/(<svg[^>]*?)\s+height="[^"]*"/i, "$1");
+        responsiveSvg = responsiveSvg.replace(
+          /(<svg[^>]*?)\s+width="[^"]*"/i,
+          '$1 width="100%"',
+        );
+
+        setSvg(responsiveSvg);
+        setError(false);
       } catch {
         if (!mounted) return;
         setError(true);
       } finally {
+        // Always clean up: remove offscreen container and any stray mermaid artifacts
+        offscreen.remove();
+        cleanupMermaidArtifacts(idPrefix);
         if (mounted) setLoading(false);
       }
-    }
+    }, 500);
 
-    void render();
-    return () => { mounted = false; };
-  }, [code, id]);
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+      cleanupMermaidArtifacts(idPrefix);
+    };
+  }, [code, idPrefix]);
 
   if (loading) {
     return (
@@ -167,8 +219,7 @@ function MermaidDiagram({ code }: { code: string }) {
 
   return (
     <div
-      ref={containerRef}
-      className="not-prose overflow-x-auto rounded-lg border border-app-border bg-[#0d1117] p-4 [&_svg]:mx-auto [&_svg]:max-w-full"
+      className="not-prose mermaid-container overflow-x-auto rounded-lg border border-app-border bg-[#0d1117] p-4"
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );

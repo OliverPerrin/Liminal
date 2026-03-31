@@ -213,59 +213,66 @@ export async function POST(request: Request) {
     const stream = new ReadableStream({
       async start(controller) {
         async function persistAssistantMessage(partial: string) {
-          const updatedMessages: SessionMessage[] = [
-            ...requestData.messages,
-            {
-              role: "assistant",
-              content: partial,
-              createdAt: new Date().toISOString(),
-            },
-          ];
+          try {
+            const updatedMessages: SessionMessage[] = [
+              ...requestData.messages,
+              {
+                role: "assistant",
+                content: partial,
+                createdAt: new Date().toISOString(),
+              },
+            ];
 
-          await adminClient
-            .from("sessions")
-            .update({
-              topic: requestData.topic,
-              messages: updatedMessages,
-            })
-            .eq("id", activeSessionId)
-            .eq("user_id", userId);
+            await adminClient
+              .from("sessions")
+              .update({
+                topic: requestData.topic,
+                messages: updatedMessages,
+              })
+              .eq("id", activeSessionId)
+              .eq("user_id", userId);
+          } catch {
+            // Persist failure must not break streaming — the client still gets the text.
+          }
         }
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
-          }
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              break;
+            }
 
-          const chunk = decoder.decode(value, { stream: true });
-          const parsedChunk = parseSseEventsWithBuffer(`${sseRemainder}${chunk}`);
-          sseRemainder = parsedChunk.remainder;
-          const textDelta = parsedChunk.textDelta;
+            const chunk = decoder.decode(value, { stream: true });
+            const parsedChunk = parseSseEventsWithBuffer(`${sseRemainder}${chunk}`);
+            sseRemainder = parsedChunk.remainder;
+            const textDelta = parsedChunk.textDelta;
 
-          if (textDelta) {
-            assistantText += textDelta;
-            controller.enqueue(encoder.encode(textDelta));
+            if (textDelta) {
+              assistantText += textDelta;
+              controller.enqueue(encoder.encode(textDelta));
 
-            const now = Date.now();
-            if (now - lastPersistAt > 2000) {
-              await persistAssistantMessage(assistantText);
-              lastPersistAt = now;
+              const now = Date.now();
+              if (now - lastPersistAt > 2000) {
+                await persistAssistantMessage(assistantText);
+                lastPersistAt = now;
+              }
             }
           }
+
+          // Flush decoder + parse any trailing buffered SSE event data.
+          const flushChunk = decoder.decode();
+          const parsedFinal = parseSseEventsWithBuffer(`${sseRemainder}${flushChunk}`);
+          if (parsedFinal.textDelta) {
+            assistantText += parsedFinal.textDelta;
+            controller.enqueue(encoder.encode(parsedFinal.textDelta));
+          }
+
+          await persistAssistantMessage(assistantText);
+        } finally {
+          // Always close the stream — even if persist or read throws.
+          controller.close();
         }
-
-        // Flush decoder + parse any trailing buffered SSE event data.
-        const flushChunk = decoder.decode();
-        const parsedFinal = parseSseEventsWithBuffer(`${sseRemainder}${flushChunk}`);
-        if (parsedFinal.textDelta) {
-          assistantText += parsedFinal.textDelta;
-          controller.enqueue(encoder.encode(parsedFinal.textDelta));
-        }
-
-        await persistAssistantMessage(assistantText);
-
-        controller.close();
       },
     });
 
