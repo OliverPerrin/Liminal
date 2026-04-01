@@ -3,7 +3,7 @@ import { assertEnv } from "@/lib/runtime-env";
 
 export const runtime = "nodejs";
 
-const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5";
+const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 const DEFAULT_ANTHROPIC_VERSION = "2023-06-01";
 const PARSE_RESUME_TIMEOUT_MS = 45000;
 const MAX_RESUME_CHARS = 30000;

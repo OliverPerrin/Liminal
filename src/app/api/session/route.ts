@@ -6,7 +6,7 @@ import type { SessionMessage } from "@/lib/types";
 
 export const runtime = "edge";
 
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-5";
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
 const DEFAULT_ANTHROPIC_VERSION = "2023-06-01";
 
 const requestSchema = z.object({

@@ -14,33 +14,39 @@ type MarkdownMessageProps = {
 };
 
 /* -------------------------------------------------------------------------- */
-/*  LaTeX normalisation                                                       */
+/*  Stage configuration                                                        */
 /* -------------------------------------------------------------------------- */
 
-/** LaTeX environments that must be wrapped in $$ when found bare. */
+const STAGE_CONFIG: Record<
+  number,
+  { border: string; bg: string; text: string; short: string }
+> = {
+  1: { border: "#f59e0b", bg: "rgba(245,158,11,0.07)", text: "#f59e0b", short: "Big Picture" },
+  2: { border: "#2dd4bf", bg: "rgba(45,212,191,0.07)", text: "#2dd4bf", short: "Intuition + Visual" },
+  3: { border: "#818cf8", bg: "rgba(129,140,248,0.07)", text: "#818cf8", short: "The Math" },
+  4: { border: "#38bdf8", bg: "rgba(56,189,248,0.07)", text: "#38bdf8", short: "Implementation" },
+  5: { border: "#fb923c", bg: "rgba(251,146,60,0.07)", text: "#fb923c", short: "Interview Questions" },
+  6: { border: "#c084fc", bg: "rgba(192,132,252,0.07)", text: "#c084fc", short: "Retrieval Check" },
+};
+
+/* -------------------------------------------------------------------------- */
+/*  LaTeX normalisation                                                        */
+/* -------------------------------------------------------------------------- */
+
 const LATEX_ENVS =
   /\\begin\{(align|aligned|equation|gather|gathered|cases|pmatrix|bmatrix|vmatrix|matrix|split|array|alignat|multline)\*?\}/;
 
-/** TeX commands that indicate a line is math, not prose. */
 const TEX_CMD =
   /\\(frac|partial|sigma|cdot|odot|hat|bar|mathbf|mathbb|sum|prod|nabla|sqrt|log|exp|text|left|right|alpha|beta|gamma|delta|theta|lambda|mu|nu|pi|rho|tau|phi|psi|omega|quad|int|lim|inf|sup|det|vec|dot|ddot|tilde|overline|underline|forall|exists|subset|cup|cap|times|div|pm|leq|geq|neq|approx|equiv|sim|mathcal|operatorname|displaystyle|binom|ldots|cdots|mathbb|mathcal)\b/;
 
-/**
- * Normalise LLM output so remark-math / rehype-katex can parse it.
- *
- * Key fixes:
- *  - Wraps bare \begin{align}…\end{align} blocks in $$
- *  - Wraps bare single-line LaTeX equations in $$
- *  - Skips lines that already contain $ delimiters (mixed prose + inline math)
- *  - Repairs common malformed \frac, unicode derivative notation
- */
 function normalizeAssistantContent(raw: string): string {
   let text = raw;
 
   // Strip zero-width characters that break math parsing.
   text = text.replace(/[\u200B-\u200D\uFEFF]/g, "");
 
-  // Ensure stage markers become markdown headers.
+  // Ensure stage markers become markdown headers with em-dash.
+  text = text.replace(/^#+\s*STAGE\s+(\d+)\s*[-–—]\s*(.+)$/gim, "## STAGE $1 — $2");
   text = text.replace(/^STAGE\s+(\d+)\s*[-–—]\s*(.+)$/gm, "## STAGE $1 — $2");
 
   // Repair malformed \frac where the denominator brace is missing.
@@ -66,7 +72,6 @@ function normalizeAssistantContent(raw: string): string {
   for (const line of lines) {
     const trimmed = line.trim();
 
-    // Track fenced code blocks.
     if (trimmed.startsWith("```")) {
       inCodeBlock = !inCodeBlock;
       result.push(line);
@@ -77,7 +82,6 @@ function normalizeAssistantContent(raw: string): string {
       continue;
     }
 
-    // Track $$ math blocks (only bare $$ on its own line toggles).
     if (trimmed === "$$") {
       inMathBlock = !inMathBlock;
       result.push(line);
@@ -88,7 +92,6 @@ function normalizeAssistantContent(raw: string): string {
       continue;
     }
 
-    // --- Accumulate \begin{env}…\end{env} blocks ---
     if (envBuffer !== null) {
       envBuffer.push(line);
       if (/\\end\{/.test(trimmed)) {
@@ -100,15 +103,12 @@ function normalizeAssistantContent(raw: string): string {
       continue;
     }
 
-    // Skip lines already delimited with $$
     if (trimmed.startsWith("$$") || trimmed.endsWith("$$")) {
       result.push(line);
       continue;
     }
 
-    // Detect bare \begin{env} not already wrapped in $$
     if (LATEX_ENVS.test(trimmed)) {
-      // Check if previous non-empty line is $$
       const alreadyWrapped = (() => {
         for (let j = result.length - 1; j >= 0; j--) {
           const prev = result[j].trim();
@@ -121,7 +121,6 @@ function normalizeAssistantContent(raw: string): string {
         result.push(line);
         continue;
       }
-      // Single-line environment (e.g. \begin{cases}…\end{cases} on one line)
       if (/\\end\{/.test(trimmed)) {
         result.push("$$");
         result.push(line);
@@ -132,23 +131,21 @@ function normalizeAssistantContent(raw: string): string {
       continue;
     }
 
-    // Skip lines that shouldn't be touched.
     if (
       !trimmed ||
-      trimmed.includes("$") || // Already has math delimiters
+      trimmed.includes("$") ||
       trimmed.startsWith("#") ||
       trimmed.startsWith("<") ||
       trimmed.startsWith("-") ||
       trimmed.startsWith("|") ||
       trimmed.startsWith(">") ||
       trimmed.startsWith("*") ||
-      /^\d+[.)]/.test(trimmed) // Numbered list items
+      /^\d+[.)]/.test(trimmed)
     ) {
       result.push(line);
       continue;
     }
 
-    // Detect bare LaTeX equation lines (TeX commands + operator, no prose).
     if (TEX_CMD.test(trimmed) && /[=+<>≤≥≈]/.test(trimmed)) {
       result.push("$$");
       result.push(trimmed);
@@ -158,7 +155,6 @@ function normalizeAssistantContent(raw: string): string {
     }
   }
 
-  // Flush any unclosed environment buffer.
   if (envBuffer !== null) {
     result.push("$$");
     result.push(...envBuffer);
@@ -169,13 +165,12 @@ function normalizeAssistantContent(raw: string): string {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Mermaid helpers                                                           */
+/*  Mermaid helpers                                                            */
 /* -------------------------------------------------------------------------- */
 
 function sanitizeMermaidCode(input: string): string {
   let code = input;
 
-  // Find the diagram declaration and keep from there onward.
   const diagramStart = code.search(
     /(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|gantt|pie|erDiagram)\s/i,
   );
@@ -183,32 +178,32 @@ function sanitizeMermaidCode(input: string): string {
     code = code.slice(diagramStart);
   }
 
-  // Quote bare node labels to avoid parser failures.
+  // Quote bare node labels.
   code = code.replace(/([A-Za-z][A-Za-z0-9_]*)\[([^\]\n]+)\]/g, (_m, id, label) => {
     const safe = label.replace(/"/g, "").trim();
     return `${id}["${safe}"]`;
   });
 
-  // Clean special characters inside quoted labels that break Mermaid.
+  // Clean special characters inside quoted labels.
   code = code.replace(/"([^"]+)"/g, (_m, label: string) => {
     let safe = label;
-    safe = safe.replace(/[{}#&\\$]/g, " ");
+    safe = safe.replace(/[{}#&\\$<>()]/g, " ");
     safe = safe.replace(/\s+/g, " ").trim();
     return `"${safe}"`;
   });
 
-  // Clean edge labels (between | … |).
+  // Clean edge labels.
   code = code.replace(/\|([^|]+)\|/g, (_m, label: string) => {
     let safe = label;
-    safe = safe.replace(/[{}#&\\"$]/g, " ");
+    safe = safe.replace(/[{}#&\\"$<>()]/g, " ");
     safe = safe.replace(/\s+/g, " ").trim();
     return `|${safe}|`;
   });
 
   // Normalize unicode subscripts.
   const subMap: Record<string, string> = {
-    "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4",
-    "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9",
+    "₀": "0","₁": "1","₂": "2","₃": "3","₄": "4",
+    "₅": "5","₆": "6","₇": "7","₈": "8","₉": "9",
   };
   code = code.replace(/[₀₁₂₃₄₅₆₇₈₉]/g, (c) => subMap[c] ?? c);
 
@@ -216,7 +211,7 @@ function sanitizeMermaidCode(input: string): string {
   code = code.replace(/[\u201C\u201D]/g, '"');
   code = code.replace(/[\u2018\u2019]/g, "'");
 
-  // Remove trailing periods on lines (Mermaid rejects them).
+  // Remove trailing periods.
   code = code.replace(/\.+$/gm, "");
 
   // Remove ::: class assignments.
@@ -225,33 +220,17 @@ function sanitizeMermaidCode(input: string): string {
   return code;
 }
 
-/** Aggressively simplify Mermaid code for a retry after initial parse failure. */
 function simplifyMermaidCode(code: string): string {
   let s = code;
-
-  // Flatten subgraph blocks (keep connections, drop structure).
   s = s.replace(/^\s*subgraph\s+.*$/gm, "");
   s = s.replace(/^\s*end\s*$/gm, "");
-
-  // Remove style / class directives.
   s = s.replace(/^\s*(style|classDef|class|linkStyle|click)\s+.*$/gm, "");
-
-  // Strip HTML tags from labels.
   s = s.replace(/<[^>]+>/g, "");
-
-  // Truncate long quoted labels.
-  s = s.replace(/"([^"]{35,})"/g, (_m, label: string) => `"${label.substring(0, 30)}..."`);
-
-  // Remove empty lines.
-  s = s
-    .split("\n")
-    .filter((l) => l.trim() !== "")
-    .join("\n");
-
+  s = s.replace(/"([^"]{35,})"/g, (_m, label: string) => `"${label.substring(0, 30)}"`);
+  s = s.split("\n").filter((l) => l.trim() !== "").join("\n");
   return s;
 }
 
-/** Remove stray DOM elements that Mermaid injects into document.body on parse errors. */
 function cleanupMermaidArtifacts(idPrefix: string) {
   if (typeof document === "undefined") return;
   document
@@ -283,18 +262,21 @@ const MERMAID_INIT = {
   startOnLoad: false,
   theme: "base" as const,
   themeVariables: {
-    background: "#0d1117",
-    primaryColor: "#1a2332",
-    primaryTextColor: "#e6edf3",
-    primaryBorderColor: "#30363d",
-    lineColor: "#58a6ff",
-    secondaryColor: "#161b22",
-    tertiaryColor: "#0d1117",
+    background: "#13141f",
+    primaryColor: "#1d1e2d",
+    primaryTextColor: "#e4e1f0",
+    primaryBorderColor: "#2b2c40",
+    lineColor: "#7c6aff",
+    secondaryColor: "#16172a",
+    tertiaryColor: "#0e0f14",
     fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif",
-    fontSize: "14px",
+    fontSize: "13px",
+    edgeLabelBackground: "#1d1e2d",
+    clusterBkg: "#1d1e2d",
+    clusterBorder: "#2b2c40",
   },
   securityLevel: "loose" as const,
-  flowchart: { curve: "basis" as const, htmlLabels: true, padding: 16 },
+  flowchart: { curve: "basis" as const, htmlLabels: true, padding: 20 },
 };
 
 function makeResponsiveSvg(svg: string): string {
@@ -318,7 +300,7 @@ function MermaidDiagram({ code }: { code: string }) {
 
       const offscreen = document.createElement("div");
       offscreen.style.cssText =
-        "position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;";
+        "position:absolute;left:-9999px;top:-9999px;width:1200px;height:1px;overflow:hidden;";
       document.body.appendChild(offscreen);
 
       try {
@@ -327,7 +309,6 @@ function MermaidDiagram({ code }: { code: string }) {
 
         const sanitized = sanitizeMermaidCode(code);
 
-        // Attempt 1: sanitized code
         try {
           const id1 = `${idPrefix}-${Date.now()}`;
           const r1 = await mermaid.render(id1, sanitized, offscreen);
@@ -339,7 +320,6 @@ function MermaidDiagram({ code }: { code: string }) {
           offscreen.innerHTML = "";
         }
 
-        // Attempt 2: aggressively simplified
         const simplified = simplifyMermaidCode(sanitized);
         try {
           const id2 = `${idPrefix}-r-${Date.now()}`;
@@ -351,7 +331,6 @@ function MermaidDiagram({ code }: { code: string }) {
           cleanupMermaidArtifacts(idPrefix);
         }
 
-        // Both attempts failed — show source code as fallback
         if (mounted) setFailed(true);
       } catch {
         if (mounted) setFailed(true);
@@ -360,7 +339,7 @@ function MermaidDiagram({ code }: { code: string }) {
         cleanupMermaidArtifacts(idPrefix);
         if (mounted) setLoading(false);
       }
-    }, 500);
+    }, 400);
 
     return () => {
       mounted = false;
@@ -371,62 +350,67 @@ function MermaidDiagram({ code }: { code: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-app-border bg-[#0d1117] p-6 text-sm text-app-muted">
-        <div className="h-4 w-4 animate-spin rounded-full border-2 border-app-muted border-t-app-accent" />
-        Rendering diagram...
+      <div className="flex items-center gap-2.5 rounded-lg border border-app-border bg-[#13141f] p-6 text-sm text-app-muted">
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-app-border border-t-app-accent" />
+        Rendering diagram…
       </div>
     );
   }
 
-  // Fallback: show the Mermaid source as a syntax-highlighted code block
   if (failed) {
     return <CodeBlock language="mermaid" code={code} />;
   }
 
   return (
     <div
-      className="not-prose mermaid-container overflow-x-auto rounded-lg border border-app-border bg-[#0d1117] p-4"
+      className="not-prose mermaid-container overflow-x-auto rounded-lg border border-app-border bg-[#13141f] p-5"
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Code block                                                                */
+/*  Code block                                                                 */
 /* -------------------------------------------------------------------------- */
 
 function CodeBlock({ language, code }: { language: string; code: string }) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
-    navigator.clipboard.writeText(code);
+    void navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const displayLang = language === "text" ? "plain" : language;
+
   return (
-    <div className="not-prose group relative rounded-lg border border-app-border bg-[#0d1117]">
-      <div className="flex items-center justify-between border-b border-app-border px-4 py-1.5">
-        <span className="text-xs text-app-muted">{language}</span>
+    <div className="not-prose group relative my-4 overflow-hidden rounded-lg border border-app-border bg-[#0c0d11]">
+      <div className="flex items-center justify-between border-b border-app-border bg-[#13141f] px-4 py-2">
+        <span className="font-mono text-[11px] font-medium uppercase tracking-widest text-app-muted">
+          {displayLang}
+        </span>
         <button
           type="button"
           onClick={handleCopy}
-          className="text-xs text-app-muted opacity-0 transition-opacity hover:text-app-fg group-hover:opacity-100"
+          className="rounded px-2 py-0.5 text-[11px] font-medium text-app-muted/60 transition-all hover:bg-app-panel-2 hover:text-app-fg"
         >
-          {copied ? "Copied" : "Copy"}
+          {copied ? "Copied!" : "Copy"}
         </button>
       </div>
       <SyntaxHighlighter
-        language={language}
+        language={language === "mermaid" ? "text" : language}
         style={oneDark}
         customStyle={{
           margin: 0,
-          padding: "1rem",
-          borderRadius: "0 0 0.5rem 0.5rem",
+          padding: "1.125rem 1.25rem",
+          borderRadius: 0,
           background: "transparent",
           fontSize: "0.8125rem",
-          lineHeight: "1.6",
+          lineHeight: "1.65",
         }}
+        showLineNumbers={code.split("\n").length > 8}
+        lineNumberStyle={{ color: "#3a3b52", fontSize: "0.75rem", minWidth: "2.5rem" }}
       >
         {code}
       </SyntaxHighlighter>
@@ -435,18 +419,104 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Exported component                                                        */
+/*  Stage header component                                                     */
+/* -------------------------------------------------------------------------- */
+
+function StageHeader({ stageNum, title }: { stageNum: number; title: string }) {
+  const config = STAGE_CONFIG[stageNum];
+  if (!config) {
+    return (
+      <h2 className="mb-3 mt-7 text-base font-semibold text-app-fg">
+        STAGE {stageNum} — {title}
+      </h2>
+    );
+  }
+
+  return (
+    <div
+      className="not-prose my-6 flex items-center gap-3 rounded-r-lg py-3 pl-4 pr-5"
+      style={{
+        borderLeft: `3px solid ${config.border}`,
+        background: config.bg,
+      }}
+    >
+      <span
+        className="shrink-0 rounded px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest"
+        style={{ background: config.border, color: "#0e0f14" }}
+      >
+        {stageNum}
+      </span>
+      <span className="font-mono text-[11px] font-semibold uppercase tracking-wider" style={{ color: config.text }}>
+        {config.short}
+      </span>
+      {title && title.toLowerCase() !== config.short.toLowerCase() && (
+        <>
+          <span className="text-app-border">·</span>
+          <span className="text-sm font-medium text-app-fg/80">{title}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Revision card detection                                                    */
+/* -------------------------------------------------------------------------- */
+
+function isRevisionCardHeader(text: string): boolean {
+  return /^revision card:/i.test(text.trim());
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Exported component                                                         */
 /* -------------------------------------------------------------------------- */
 
 export function MarkdownMessage({ content }: MarkdownMessageProps) {
   const normalizedContent = useMemo(() => normalizeAssistantContent(content), [content]);
 
   return (
-    <div className="markdown-body prose prose-invert max-w-none prose-headings:text-app-fg prose-h2:mt-6 prose-h2:mb-3 prose-h2:border-b prose-h2:border-app-border prose-h2:pb-2 prose-h2:text-base prose-h2:font-semibold prose-p:leading-relaxed prose-p:text-[15px] prose-strong:text-app-fg prose-pre:bg-transparent prose-pre:p-0 prose-code:text-sky-300 prose-li:text-[15px] prose-li:leading-relaxed prose-ol:my-2 prose-ul:my-2">
+    <div className="markdown-body prose prose-invert max-w-none prose-headings:text-app-fg prose-h2:mt-0 prose-h2:mb-0 prose-h2:border-none prose-h2:pb-0 prose-h3:text-[0.9375rem] prose-h3:font-semibold prose-h3:text-app-fg/90 prose-p:leading-7 prose-p:text-[0.9375rem] prose-strong:text-app-fg prose-pre:bg-transparent prose-pre:p-0 prose-code:text-sky-300 prose-li:text-[0.9375rem] prose-li:leading-7 prose-ol:my-3 prose-ul:my-3">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex, rehypeRaw]}
         components={{
+          h2(props) {
+            const text = String(props.children ?? "");
+            // Match "STAGE N — Title" or "STAGE N: Title"
+            const stageMatch = text.match(/^STAGE\s+(\d+)\s*[—–:-]\s*(.*)$/i);
+            if (stageMatch) {
+              return (
+                <StageHeader
+                  stageNum={parseInt(stageMatch[1])}
+                  title={stageMatch[2].trim()}
+                />
+              );
+            }
+            // Revision card header
+            if (isRevisionCardHeader(text)) {
+              return (
+                <div className="not-prose mb-4 mt-2 flex items-center gap-2.5">
+                  <div className="h-px flex-1 bg-app-border" />
+                  <span className="rounded-full border border-app-accent/30 bg-app-accent/10 px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-widest text-app-accent">
+                    Revision Card
+                  </span>
+                  <div className="h-px flex-1 bg-app-border" />
+                </div>
+              );
+            }
+            return (
+              <h2 className="mb-3 mt-7 border-b border-app-border pb-2 text-base font-semibold text-app-fg">
+                {props.children}
+              </h2>
+            );
+          },
+          h3(props) {
+            return (
+              <h3 className="mb-2 mt-5 text-[0.9375rem] font-semibold text-app-fg/90">
+                {props.children}
+              </h3>
+            );
+          },
           pre({ children }) {
             return <>{children}</>;
           },
@@ -456,10 +526,9 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
             const language = match?.[1];
             const code = String(children).replace(/\n$/, "");
 
-            // Inline code (no language, no newlines)
             if (!language && !code.includes("\n")) {
               return (
-                <code className="rounded-md bg-sky-500/10 px-1.5 py-0.5 text-[13px] text-sky-300">
+                <code className="rounded-md bg-[#1d1e2d] px-1.5 py-0.5 font-mono text-[13px] text-sky-300">
                   {children}
                 </code>
               );
@@ -473,15 +542,18 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
           },
           table(props) {
             return (
-              <div className="not-prose overflow-x-auto rounded-lg border border-app-border">
-                <table className="min-w-full text-sm" {...props} />
+              <div className="not-prose my-4 overflow-x-auto rounded-lg border border-app-border">
+                <table className="min-w-full text-[0.875rem]" {...props} />
               </div>
             );
+          },
+          thead(props) {
+            return <thead className="bg-app-panel-2" {...props} />;
           },
           th(props) {
             return (
               <th
-                className="border-b border-app-border bg-app-panel-2 px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-app-muted"
+                className="border-b border-app-border px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-app-muted"
                 {...props}
               />
             );
@@ -489,10 +561,43 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
           td(props) {
             return (
               <td
-                className="border-b border-app-border/50 px-4 py-2 text-sm"
+                className="border-b border-app-border/40 px-4 py-2.5 text-[0.875rem] text-app-fg/90"
                 {...props}
               />
             );
+          },
+          tr(props) {
+            return <tr className="transition-colors hover:bg-app-panel-2/40" {...props} />;
+          },
+          blockquote(props) {
+            return (
+              <blockquote
+                className="my-3 rounded-r-lg border-l-[3px] border-app-accent/50 bg-app-accent/5 py-2 pl-4 pr-3 text-[0.9375rem] text-app-muted"
+                {...props}
+              />
+            );
+          },
+          a(props) {
+            return (
+              <a
+                {...props}
+                className="text-app-accent underline decoration-app-accent/40 underline-offset-2 hover:decoration-app-accent"
+                target="_blank"
+                rel="noopener noreferrer"
+              />
+            );
+          },
+          hr() {
+            return <hr className="my-6 border-app-border" />;
+          },
+          ul(props) {
+            return <ul className="my-3 list-disc space-y-1 pl-5" {...props} />;
+          },
+          ol(props) {
+            return <ol className="my-3 list-decimal space-y-1 pl-5" {...props} />;
+          },
+          li(props) {
+            return <li className="text-[0.9375rem] leading-7 text-app-fg/90" {...props} />;
           },
         }}
       >

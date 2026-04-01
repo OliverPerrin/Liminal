@@ -1,13 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0d14;
-  --foreground: #e1e7ef;
-  --panel: #111827;
-  --panel-2: #0d1320;
-  --border: #1e293b;
-  --muted: #8b9dc3;
-  --accent: #38bdf8;
+  /* Core palette — warm indigo-violet dark theme */
+  --background: #0e0f14;
+  --foreground: #e4e1f0;
+  --panel: #16172a;
+  --panel-2: #1d1e2d;
+  --border: #2b2c40;
+  --muted: #7e7d9e;
+  --accent: #7c6aff;
+
+  /* Stage accent colors — used in markdown headers + progress bar */
+  --stage-1: #f59e0b;   /* Amber    — Big Picture */
+  --stage-2: #2dd4bf;   /* Teal     — Intuition + Visual */
+  --stage-3: #818cf8;   /* Indigo   — The Math */
+  --stage-4: #38bdf8;   /* Sky      — Implementation */
+  --stage-5: #fb923c;   /* Orange   — Interview Questions */
+  --stage-6: #c084fc;   /* Purple   — Retrieval Check */
+
+  /* Semantic */
+  --success: #34d399;
+  --warning: #f59e0b;
+  --error: #f87171;
 }
 
 @theme inline {
@@ -34,56 +48,55 @@ body {
   border-color: var(--border);
 }
 
-/* Scrollbars */
+/* ─── Scrollbars ─────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #2b2c40;
   border-radius: 999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #3d3e5a;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 
-/* KaTeX overrides for dark theme */
+/* ─── KaTeX — dark theme overrides ──────────────────────────────────────── */
 .katex {
   font-size: 1.05em;
   color: var(--foreground);
 }
 
 .katex-display {
-  margin: 1.25rem 0;
-  padding: 1rem 1.25rem;
-  background: rgba(15, 23, 42, 0.6);
+  margin: 1.5rem 0;
+  padding: 1.25rem 1.5rem;
+  background: rgba(29, 30, 45, 0.7);
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
+  border-left: 3px solid var(--stage-3);
+  border-radius: 0 0.5rem 0.5rem 0;
   overflow-x: auto;
   overflow-y: hidden;
 }
 
 .katex-display > .katex {
-  color: #e2e8f0;
+  color: #e4e1f0;
 }
 
 .katex .mfrac .frac-line {
-  border-color: #64748b;
+  border-color: #5a5b78;
 }
 
-/* Markdown body refinements */
+/* ─── Markdown body ──────────────────────────────────────────────────────── */
 .markdown-body blockquote {
   border-left: 3px solid var(--accent);
-  background: rgba(56, 189, 248, 0.05);
+  background: rgba(124, 106, 255, 0.06);
   padding: 0.75rem 1rem;
   margin: 1rem 0;
   border-radius: 0 0.375rem 0.375rem 0;
+  color: var(--muted);
 }
 
 .markdown-body hr {
@@ -91,15 +104,31 @@ body {
   margin: 1.5rem 0;
 }
 
-/* Mermaid diagram SVG styling — make diagrams fill their container */
+/* ─── Mermaid diagrams ───────────────────────────────────────────────────── */
 .mermaid-container svg {
   width: 100% !important;
   max-width: 100%;
   height: auto !important;
-  min-height: 200px;
+  min-height: 180px;
 }
 
-/* Ensure inline code doesn't break in weird places */
+/* ─── Inline code ────────────────────────────────────────────────────────── */
 .markdown-body code {
   word-break: break-word;
+}
+
+/* ─── Stage header cards (used by MarkdownMessage stage h2 treatment) ────── */
+.stage-header {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  margin: 1.75rem 0 0.875rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+/* ─── Subtle selection color ─────────────────────────────────────────────── */
+::selection {
+  background: rgba(124, 106, 255, 0.25);
+  color: var(--foreground);
 }
