@@ -108,7 +108,9 @@ function normalizeAssistantContent(raw: string): string {
       continue;
     }
 
-    if (LATEX_ENVS.test(trimmed)) {
+    // Only apply block-math wrapping if the line isn't already inside inline $...$ delimiters.
+    // A line like `where $M = \begin{cases}...\end{cases}$` is already valid inline math.
+    if (LATEX_ENVS.test(trimmed) && !trimmed.includes("$")) {
       const alreadyWrapped = (() => {
         for (let j = result.length - 1; j >= 0; j--) {
           const prev = result[j].trim();
@@ -178,13 +180,20 @@ function sanitizeMermaidCode(input: string): string {
     code = code.slice(diagramStart);
   }
 
-  // Quote bare node labels.
-  code = code.replace(/([A-Za-z][A-Za-z0-9_]*)\[([^\]\n]+)\]/g, (_m, id, label) => {
-    const safe = label.replace(/"/g, "").trim();
-    return `${id}["${safe}"]`;
-  });
+  // Quote bare node labels. The inner group matches either:
+  //   • an already-quoted string: "..." (may contain [ ] inside)
+  //   • an unquoted label: anything up to the closing ]
+  // This prevents the regex from splitting on ] inside quoted labels like ["Query [B T D]"].
+  code = code.replace(
+    /([A-Za-z][A-Za-z0-9_]*)\[("(?:[^"\\]|\\.)*"|[^\]\n]+)\]/g,
+    (_m, id, label) => {
+      if (label.startsWith('"')) return `${id}[${label}]`; // already quoted, leave as-is
+      const safe = label.replace(/"/g, "").trim();
+      return `${id}["${safe}"]`;
+    },
+  );
 
-  // Clean special characters inside quoted labels.
+  // Clean special characters inside quoted labels (but keep [ ] — they're dimension annotations).
   code = code.replace(/"([^"]+)"/g, (_m, label: string) => {
     let safe = label;
     safe = safe.replace(/[{}#&\\$<>()]/g, " ");
