@@ -1,27 +1,43 @@
 @import "tailwindcss";
 
+/* ─── Dark theme (default) ───────────────────────────────────────────────── */
 :root {
-  /* Core palette — warm indigo-violet dark theme */
-  --background: #0e0f14;
-  --foreground: #e4e1f0;
-  --panel: #16172a;
-  --panel-2: #1d1e2d;
-  --border: #2b2c40;
-  --muted: #7e7d9e;
-  --accent: #7c6aff;
+  --background: #09090f;
+  --foreground: #f0f0f8;
+  --panel: #111119;
+  --panel-2: #1b1b26;
+  --border: #252535;
+  --muted: #7878a0;
+  --accent: #10b981;
 
-  /* Stage accent colors — used in markdown headers + progress bar */
-  --stage-1: #f59e0b;   /* Amber    — Big Picture */
-  --stage-2: #2dd4bf;   /* Teal     — Intuition + Visual */
-  --stage-3: #818cf8;   /* Indigo   — The Math */
-  --stage-4: #38bdf8;   /* Sky      — Implementation */
-  --stage-5: #fb923c;   /* Orange   — Interview Questions */
-  --stage-6: #c084fc;   /* Purple   — Retrieval Check */
+  /* Code surfaces — stay dark in both themes */
+  --code-bg: #0c0d11;
+  --code-panel: #131420;
+  --code-border: #1e1e2f;
+
+  /* Stage accent colors */
+  --stage-1: #f59e0b;
+  --stage-2: #2dd4bf;
+  --stage-3: #818cf8;
+  --stage-4: #38bdf8;
+  --stage-5: #fb923c;
+  --stage-6: #c084fc;
 
   /* Semantic */
   --success: #34d399;
   --warning: #f59e0b;
-  --error: #f87171;
+  --error:   #f87171;
+}
+
+/* ─── Light theme ────────────────────────────────────────────────────────── */
+html.light {
+  --background: #f9fafb;
+  --foreground: #111827;
+  --panel: #ffffff;
+  --panel-2: #f3f4f6;
+  --border: #e5e7eb;
+  --muted: #6b7280;
+  --accent: #059669;
 }
 
 @theme inline {
@@ -49,22 +65,15 @@ body {
 }
 
 /* ─── Scrollbars ─────────────────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb {
-  background: #2b2c40;
+  background: var(--border);
   border-radius: 999px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #3d3e5a;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+::-webkit-scrollbar-thumb:hover { background: var(--muted); opacity: 0.4; }
+::-webkit-scrollbar-track { background: transparent; }
 
-/* ─── KaTeX — dark theme overrides ──────────────────────────────────────── */
+/* ─── KaTeX ──────────────────────────────────────────────────────────────── */
 .katex {
   font-size: 1.05em;
   color: var(--foreground);
@@ -73,26 +82,22 @@ body {
 .katex-display {
   margin: 1.5rem 0;
   padding: 1.25rem 1.5rem;
-  background: rgba(29, 30, 45, 0.7);
-  border: 1px solid var(--border);
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
   border-left: 3px solid var(--stage-3);
   border-radius: 0 0.5rem 0.5rem 0;
   overflow-x: auto;
   overflow-y: hidden;
 }
 
-.katex-display > .katex {
-  color: #e4e1f0;
-}
+/* Keep KaTeX text readable in light mode too */
+.katex-display > .katex { color: #f0f0f8; }
+.katex .mfrac .frac-line { border-color: #3a3b52; }
 
-.katex .mfrac .frac-line {
-  border-color: #5a5b78;
-}
-
-/* ─── Markdown body ──────────────────────────────────────────────────────── */
+/* ─── Markdown ───────────────────────────────────────────────────────────── */
 .markdown-body blockquote {
   border-left: 3px solid var(--accent);
-  background: rgba(124, 106, 255, 0.06);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
   padding: 0.75rem 1rem;
   margin: 1rem 0;
   border-radius: 0 0.375rem 0.375rem 0;
@@ -104,7 +109,7 @@ body {
   margin: 1.5rem 0;
 }
 
-/* ─── Mermaid diagrams ───────────────────────────────────────────────────── */
+/* ─── Mermaid ────────────────────────────────────────────────────────────── */
 .mermaid-container svg {
   width: 100% !important;
   max-width: 100%;
@@ -113,11 +118,9 @@ body {
 }
 
 /* ─── Inline code ────────────────────────────────────────────────────────── */
-.markdown-body code {
-  word-break: break-word;
-}
+.markdown-body code { word-break: break-word; }
 
-/* ─── Stage header cards (used by MarkdownMessage stage h2 treatment) ────── */
+/* ─── Stage header cards ─────────────────────────────────────────────────── */
 .stage-header {
   display: flex;
   align-items: center;
@@ -127,8 +130,8 @@ body {
   border-radius: 0 0.5rem 0.5rem 0;
 }
 
-/* ─── Subtle selection color ─────────────────────────────────────────────── */
+/* ─── Selection ──────────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(124, 106, 255, 0.25);
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
   color: var(--foreground);
 }

@@ -71,7 +71,7 @@ function detectContinuePrompt(messages: SessionMessage[], isStreaming: boolean):
 function masteryColor(count: number): string {
   if (count >= 5) return "#34d399"; // green
   if (count >= 3) return "#f59e0b"; // amber
-  return "#7c6aff";                  // violet (just started)
+  return "#10b981";                  // violet (just started)
 }
 
 function timeAgo(iso: string): string {
@@ -205,7 +205,7 @@ function EmptyState({ onTopicClick }: { onTopicClick: (t: string) => void }) {
         </p>
         {suggestions.map((topic) => {
           const domain = getDomainForTopic(topic);
-          const color = domain ? DOMAIN_COLORS[domain] : "#7c6aff";
+          const color = domain ? DOMAIN_COLORS[domain] : "#10b981";
           return (
             <button
               key={topic}
@@ -243,7 +243,7 @@ export function HomeView({ userId }: HomeViewProps) {
   const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({});
   const [chatError, setChatError] = useState<string | null>(null);
   const [mastery, setMastery] = useState<Record<string, TopicMastery>>({});
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const currentStage = useMemo(() => detectCurrentStage(messages), [messages]);
@@ -276,9 +276,10 @@ export function HomeView({ userId }: HomeViewProps) {
     });
   }
 
-  // Auto-scroll
+  // Auto-scroll — scroll the container directly so the page itself never moves
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = messagesContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   // Auto-resize textarea
@@ -494,8 +495,8 @@ export function HomeView({ userId }: HomeViewProps) {
 
   const studiedTopicsCount = Object.keys(mastery).length;
   const domainAccentColor = activeTopic
-    ? (DOMAIN_COLORS[getDomainForTopic(activeTopic) ?? ""] ?? "#7c6aff")
-    : "#7c6aff";
+    ? (DOMAIN_COLORS[getDomainForTopic(activeTopic) ?? ""] ?? "#10b981")
+    : "#10b981";
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -525,7 +526,7 @@ export function HomeView({ userId }: HomeViewProps) {
 
           <div className="flex-1 overflow-y-auto p-2">
             {filteredDomains.map((domain) => {
-              const domainColor = DOMAIN_COLORS[domain.name] ?? "#7c6aff";
+              const domainColor = DOMAIN_COLORS[domain.name] ?? "#10b981";
               return (
                 <div key={domain.name} className="mb-1">
                   <button
@@ -613,7 +614,7 @@ export function HomeView({ userId }: HomeViewProps) {
         </aside>
 
         {/* ── Main chat ─────────────────────────────────────────────────────── */}
-        <main className="flex min-h-0 flex-col bg-app-bg">
+        <main className="flex min-h-0 flex-col overflow-hidden bg-app-bg">
           {/* Chat header */}
           <div className="flex min-h-0 items-center gap-3 border-b border-app-border bg-app-panel px-5 py-3">
             <div className="min-w-0 flex-1">
@@ -657,7 +658,7 @@ export function HomeView({ userId }: HomeViewProps) {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto">
+          <div ref={messagesContainerRef} className="min-h-0 flex-1 overflow-y-auto">
             <div className="mx-auto max-w-4xl px-4 py-6 sm:px-8">
               {chatError && (
                 <div className="mb-5 rounded-lg border border-red-500/25 bg-red-500/5 px-4 py-3 text-sm text-red-300">
@@ -691,7 +692,6 @@ export function HomeView({ userId }: HomeViewProps) {
                   ))}
                 </div>
               )}
-              <div ref={messagesEndRef} />
             </div>
           </div>
 
@@ -816,7 +816,7 @@ export function HomeView({ userId }: HomeViewProps) {
                 <div className="space-y-px">
                   {sessions.map((record) => {
                     const domain = getDomainForTopic(record.topic);
-                    const color = domain ? DOMAIN_COLORS[domain] : "#7c6aff";
+                    const color = domain ? DOMAIN_COLORS[domain] : "#10b981";
                     const msgCount = (record.messages as SessionMessage[])?.length ?? 0;
                     const stage = detectCurrentStage(
                       (record.messages as SessionMessage[]) || [],

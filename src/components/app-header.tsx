@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, Moon, Sun } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
@@ -19,11 +21,24 @@ type AppHeaderProps = {
 export function AppHeader({ studiedCount }: AppHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("lml-theme");
+    setIsDark(stored !== "light");
+  }, []);
+
+  function toggleTheme() {
+    const next = isDark ? "light" : "dark";
+    setIsDark(!isDark);
+    document.documentElement.classList.toggle("light", !isDark);
+    localStorage.setItem("lml-theme", next);
+  }
 
   async function handleLogout() {
     const supabase = getSupabaseBrowserClient();
     await supabase.auth.signOut();
-    router.push("/auth");
+    router.push("/about");
     router.refresh();
   }
 
@@ -33,12 +48,10 @@ export function AppHeader({ studiedCount }: AppHeaderProps) {
         {/* Brand */}
         <Link
           href="/home"
-          className="flex items-center gap-2.5 text-[13px] font-bold tracking-tight text-app-fg transition-opacity hover:opacity-80"
+          className="flex items-center gap-2 text-[13px] font-bold tracking-tight text-app-accent transition-opacity hover:opacity-80"
         >
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-app-accent text-[10px] font-black text-white">
-            LM
-          </div>
-          <span className="hidden sm:inline">LiminalML</span>
+          <Logo size={22} />
+          <span className="hidden sm:inline text-app-fg">LiminalML</span>
         </Link>
 
         {/* Nav */}
@@ -50,7 +63,7 @@ export function AppHeader({ studiedCount }: AppHeaderProps) {
               className={cn(
                 "rounded-md px-3 py-1.5 text-[13px] transition-colors",
                 pathname === link.href
-                  ? "bg-app-accent/12 text-app-accent"
+                  ? "bg-app-accent/10 text-app-accent"
                   : "text-app-muted hover:bg-app-panel-2 hover:text-app-fg",
               )}
             >
@@ -68,6 +81,17 @@ export function AppHeader({ studiedCount }: AppHeaderProps) {
           )}
 
           <div className="mx-2 h-3.5 w-px bg-app-border" />
+
+          {/* Theme toggle */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            className="rounded-md p-1.5 text-app-muted/60 transition-colors hover:bg-app-panel-2 hover:text-app-fg"
+          >
+            {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+          </button>
+
           <button
             type="button"
             onClick={handleLogout}

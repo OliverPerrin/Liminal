@@ -262,18 +262,18 @@ const MERMAID_INIT = {
   startOnLoad: false,
   theme: "base" as const,
   themeVariables: {
-    background: "#13141f",
-    primaryColor: "#1d1e2d",
-    primaryTextColor: "#e4e1f0",
-    primaryBorderColor: "#2b2c40",
-    lineColor: "#7c6aff",
-    secondaryColor: "#16172a",
-    tertiaryColor: "#0e0f14",
+    background: "#111119",
+    primaryColor: "#1b1b26",
+    primaryTextColor: "#f0f0f8",
+    primaryBorderColor: "#252535",
+    lineColor: "#10b981",
+    secondaryColor: "#111119",
+    tertiaryColor: "#09090f",
     fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif",
     fontSize: "13px",
-    edgeLabelBackground: "#1d1e2d",
-    clusterBkg: "#1d1e2d",
-    clusterBorder: "#2b2c40",
+    edgeLabelBackground: "#1b1b26",
+    clusterBkg: "#1b1b26",
+    clusterBorder: "#252535",
   },
   securityLevel: "loose" as const,
   flowchart: { curve: "basis" as const, htmlLabels: true, padding: 20 },
@@ -350,7 +350,7 @@ function MermaidDiagram({ code }: { code: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2.5 rounded-lg border border-app-border bg-[#13141f] p-6 text-sm text-app-muted">
+      <div className="flex items-center gap-2.5 rounded-lg border border-app-border bg-[#111119] p-6 text-sm text-app-muted">
         <div className="h-4 w-4 animate-spin rounded-full border-2 border-app-border border-t-app-accent" />
         Rendering diagram…
       </div>
@@ -363,7 +363,7 @@ function MermaidDiagram({ code }: { code: string }) {
 
   return (
     <div
-      className="not-prose mermaid-container overflow-x-auto rounded-lg border border-app-border bg-[#13141f] p-5"
+      className="not-prose mermaid-container overflow-x-auto rounded-lg border border-app-border bg-[#111119] p-5"
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );
@@ -386,7 +386,7 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
 
   return (
     <div className="not-prose group relative my-4 overflow-hidden rounded-lg border border-app-border bg-[#0c0d11]">
-      <div className="flex items-center justify-between border-b border-app-border bg-[#13141f] px-4 py-2">
+      <div className="flex items-center justify-between border-b border-[#1e1e2f] bg-[#111119] px-4 py-2">
         <span className="font-mono text-[11px] font-medium uppercase tracking-widest text-app-muted">
           {displayLang}
         </span>
@@ -410,7 +410,7 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
           lineHeight: "1.65",
         }}
         showLineNumbers={code.split("\n").length > 8}
-        lineNumberStyle={{ color: "#3a3b52", fontSize: "0.75rem", minWidth: "2.5rem" }}
+        lineNumberStyle={{ color: "#383848", fontSize: "0.75rem", minWidth: "2.5rem" }}
       >
         {code}
       </SyntaxHighlighter>
@@ -475,7 +475,7 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
   const normalizedContent = useMemo(() => normalizeAssistantContent(content), [content]);
 
   return (
-    <div className="markdown-body prose prose-invert max-w-none prose-headings:text-app-fg prose-h2:mt-0 prose-h2:mb-0 prose-h2:border-none prose-h2:pb-0 prose-h3:text-[0.9375rem] prose-h3:font-semibold prose-h3:text-app-fg/90 prose-p:leading-7 prose-p:text-[0.9375rem] prose-strong:text-app-fg prose-pre:bg-transparent prose-pre:p-0 prose-code:text-sky-300 prose-li:text-[0.9375rem] prose-li:leading-7 prose-ol:my-3 prose-ul:my-3">
+    <div className="markdown-body prose prose-invert max-w-none prose-headings:text-app-fg prose-h2:mt-0 prose-h2:mb-0 prose-h2:border-none prose-h2:pb-0 prose-h3:text-[0.9375rem] prose-h3:font-semibold prose-h3:text-app-fg/90 prose-p:leading-7 prose-p:text-[0.9375rem] prose-strong:text-app-fg prose-pre:bg-transparent prose-pre:p-0 prose-code:text-emerald-300 prose-li:text-[0.9375rem] prose-li:leading-7 prose-ol:my-3 prose-ul:my-3">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex, rehypeRaw]}
@@ -528,7 +528,7 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
 
             if (!language && !code.includes("\n")) {
               return (
-                <code className="rounded-md bg-[#1d1e2d] px-1.5 py-0.5 font-mono text-[13px] text-sky-300">
+                <code className="rounded-md bg-[#1b1b26] px-1.5 py-0.5 font-mono text-[13px] text-emerald-300">
                   {children}
                 </code>
               );

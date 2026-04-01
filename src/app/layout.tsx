@@ -28,6 +28,14 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      {/* Set theme before first paint to avoid flash */}
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('lml-theme');if(t==='light')document.documentElement.classList.add('light');}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-app-bg text-app-fg">{children}</body>
     </html>
   );

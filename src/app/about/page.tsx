@@ -2,6 +2,7 @@ import Link from "next/link";
 import { TOPIC_TAXONOMY } from "@/lib/topics";
 import { getCurrentUser } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
+import { Logo } from "@/components/logo";
 
 const STAGE_CARDS = [
   {
@@ -61,10 +62,8 @@ export default async function AboutPage() {
       ) : (
         <header className="border-b border-app-border bg-app-panel/95 backdrop-blur-sm">
           <div className="mx-auto flex h-11 w-full max-w-5xl items-center justify-between px-6">
-            <div className="flex items-center gap-2.5 text-[13px] font-bold text-app-fg">
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-app-accent text-[10px] font-black text-white">
-                LM
-              </div>
+            <div className="flex items-center gap-2 text-[13px] font-bold text-app-fg">
+              <Logo size={22} className="text-app-accent" />
               LiminalML
             </div>
             <Link
@@ -88,7 +87,7 @@ export default async function AboutPage() {
           <br />
           <span
             style={{
-              background: "linear-gradient(135deg, #7c6aff 0%, #c084fc 55%, #2dd4bf 100%)",
+              background: "linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #818cf8 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
             }}
@@ -332,9 +331,7 @@ export default async function AboutPage() {
       <footer className="border-t border-app-border bg-app-panel">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
           <div className="flex items-center gap-2 text-[12px] font-semibold text-app-muted">
-            <div className="flex h-5 w-5 items-center justify-center rounded bg-app-accent text-[9px] font-black text-white">
-              LM
-            </div>
+            <Logo size={18} className="text-app-accent" />
             LiminalML
           </div>
           <p className="text-[12px] text-app-muted/50">

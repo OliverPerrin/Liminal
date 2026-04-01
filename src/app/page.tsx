@@ -4,7 +4,7 @@ import { getCurrentUser, requireOnboardingStatus } from "@/lib/auth";
 export default async function RootPage() {
   const user = await getCurrentUser();
   if (!user) {
-    redirect("/auth");
+    redirect("/about");
   }
 
   const isOnboarded = await requireOnboardingStatus(user.id);
