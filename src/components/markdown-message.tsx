@@ -193,10 +193,15 @@ function sanitizeMermaidCode(input: string): string {
     },
   );
 
-  // Clean special characters inside quoted labels (but keep [ ] — they're dimension annotations).
+  // Inside quoted labels:
+  //   1. Convert [brackets] → (parens). Mermaid's lexer treats [ ] as node-shape
+  //      delimiters even inside quoted strings, so "Input [B T D]" breaks parsing.
+  //   2. Strip chars that break Mermaid / the HTML label renderer.
+  //      ( ) are kept intentionally — they're our dimension-annotation delimiters now.
   code = code.replace(/"([^"]+)"/g, (_m, label: string) => {
     let safe = label;
-    safe = safe.replace(/[{}#&\\$<>()]/g, " ");
+    safe = safe.replace(/\[([^\]]*)\]/g, "($1)"); // [B T D] → (B T D)
+    safe = safe.replace(/[{}#&\\$<>]/g, " ");      // strip chars that break Mermaid/HTML
     safe = safe.replace(/\s+/g, " ").trim();
     return `"${safe}"`;
   });
