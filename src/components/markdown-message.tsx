@@ -13,9 +13,26 @@ type MarkdownMessageProps = {
   content: string;
 };
 
+/* -------------------------------------------------------------------------- */
+/*  LaTeX normalisation                                                       */
+/* -------------------------------------------------------------------------- */
+
+/** LaTeX environments that must be wrapped in $$ when found bare. */
+const LATEX_ENVS =
+  /\\begin\{(align|aligned|equation|gather|gathered|cases|pmatrix|bmatrix|vmatrix|matrix|split|array|alignat|multline)\*?\}/;
+
+/** TeX commands that indicate a line is math, not prose. */
+const TEX_CMD =
+  /\\(frac|partial|sigma|cdot|odot|hat|bar|mathbf|mathbb|sum|prod|nabla|sqrt|log|exp|text|left|right|alpha|beta|gamma|delta|theta|lambda|mu|nu|pi|rho|tau|phi|psi|omega|quad|int|lim|inf|sup|det|vec|dot|ddot|tilde|overline|underline|forall|exists|subset|cup|cap|times|div|pm|leq|geq|neq|approx|equiv|sim|mathcal|operatorname|displaystyle|binom|ldots|cdots|mathbb|mathcal)\b/;
+
 /**
- * Light cleanup of LLM output to help remark-math and rehype-katex parse correctly.
- * Only applies safe, non-destructive transforms.
+ * Normalise LLM output so remark-math / rehype-katex can parse it.
+ *
+ * Key fixes:
+ *  - Wraps bare \begin{align}…\end{align} blocks in $$
+ *  - Wraps bare single-line LaTeX equations in $$
+ *  - Skips lines that already contain $ delimiters (mixed prose + inline math)
+ *  - Repairs common malformed \frac, unicode derivative notation
  */
 function normalizeAssistantContent(raw: string): string {
   let text = raw;
@@ -23,11 +40,10 @@ function normalizeAssistantContent(raw: string): string {
   // Strip zero-width characters that break math parsing.
   text = text.replace(/[\u200B-\u200D\uFEFF]/g, "");
 
-  // Ensure stage markers become markdown headers if Claude forgot the ##.
+  // Ensure stage markers become markdown headers.
   text = text.replace(/^STAGE\s+(\d+)\s*[-–—]\s*(.+)$/gm, "## STAGE $1 — $2");
 
-  // Repair common malformed \frac where the denominator brace is missing.
-  // e.g. \frac{x}\partial y → \frac{x}{\partial y}
+  // Repair malformed \frac where the denominator brace is missing.
   text = text.replace(
     /\\frac\{([^{}]+)\}\\partial\s*([a-zA-Z][a-zA-Z0-9_]*)/g,
     "\\frac{$1}{\\partial $2}",
@@ -39,41 +55,130 @@ function normalizeAssistantContent(raw: string): string {
     (_m, top, bottom) => `$\\frac{\\partial ${top}}{\\partial ${bottom}}$`,
   );
 
-  // Wrap bare equation lines (containing TeX commands + operators) in $$ blocks.
-  text = text
-    .split("\n")
-    .map((line) => {
-      const trimmed = line.trim();
-      if (
-        !trimmed ||
-        trimmed.startsWith("$") ||
-        trimmed.startsWith("```") ||
-        trimmed.startsWith("#") ||
-        trimmed.startsWith("<") ||
-        trimmed.startsWith("-") ||
-        trimmed.startsWith("|")
-      ) {
-        return line;
+  /* ---- Line-by-line pass: wrap bare LaTeX in $$ delimiters ---- */
+
+  const lines = text.split("\n");
+  const result: string[] = [];
+  let inCodeBlock = false;
+  let inMathBlock = false;
+  let envBuffer: string[] | null = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Track fenced code blocks.
+    if (trimmed.startsWith("```")) {
+      inCodeBlock = !inCodeBlock;
+      result.push(line);
+      continue;
+    }
+    if (inCodeBlock) {
+      result.push(line);
+      continue;
+    }
+
+    // Track $$ math blocks (only bare $$ on its own line toggles).
+    if (trimmed === "$$") {
+      inMathBlock = !inMathBlock;
+      result.push(line);
+      continue;
+    }
+    if (inMathBlock) {
+      result.push(line);
+      continue;
+    }
+
+    // --- Accumulate \begin{env}…\end{env} blocks ---
+    if (envBuffer !== null) {
+      envBuffer.push(line);
+      if (/\\end\{/.test(trimmed)) {
+        result.push("$$");
+        result.push(...envBuffer);
+        result.push("$$");
+        envBuffer = null;
       }
+      continue;
+    }
 
-      const hasTexCommand =
-        /\\(frac|partial|sigma|cdot|odot|hat|bar|mathbf|mathbb|sum|prod|nabla|sqrt|log|exp|text|left|right|begin|end|alpha|beta|gamma|delta|theta|lambda|mu|nu|pi|rho|tau|phi|psi|omega)/.test(
-          trimmed,
-        );
-      const hasOperator = /[=+]/.test(trimmed);
+    // Skip lines already delimited with $$
+    if (trimmed.startsWith("$$") || trimmed.endsWith("$$")) {
+      result.push(line);
+      continue;
+    }
 
-      return hasTexCommand && hasOperator ? `$$\n${trimmed}\n$$` : line;
-    })
-    .join("\n");
+    // Detect bare \begin{env} not already wrapped in $$
+    if (LATEX_ENVS.test(trimmed)) {
+      // Check if previous non-empty line is $$
+      const alreadyWrapped = (() => {
+        for (let j = result.length - 1; j >= 0; j--) {
+          const prev = result[j].trim();
+          if (prev === "") continue;
+          return prev === "$$";
+        }
+        return false;
+      })();
+      if (alreadyWrapped) {
+        result.push(line);
+        continue;
+      }
+      // Single-line environment (e.g. \begin{cases}…\end{cases} on one line)
+      if (/\\end\{/.test(trimmed)) {
+        result.push("$$");
+        result.push(line);
+        result.push("$$");
+        continue;
+      }
+      envBuffer = [line];
+      continue;
+    }
 
-  return text;
+    // Skip lines that shouldn't be touched.
+    if (
+      !trimmed ||
+      trimmed.includes("$") || // Already has math delimiters
+      trimmed.startsWith("#") ||
+      trimmed.startsWith("<") ||
+      trimmed.startsWith("-") ||
+      trimmed.startsWith("|") ||
+      trimmed.startsWith(">") ||
+      trimmed.startsWith("*") ||
+      /^\d+[.)]/.test(trimmed) // Numbered list items
+    ) {
+      result.push(line);
+      continue;
+    }
+
+    // Detect bare LaTeX equation lines (TeX commands + operator, no prose).
+    if (TEX_CMD.test(trimmed) && /[=+<>≤≥≈]/.test(trimmed)) {
+      result.push("$$");
+      result.push(trimmed);
+      result.push("$$");
+    } else {
+      result.push(line);
+    }
+  }
+
+  // Flush any unclosed environment buffer.
+  if (envBuffer !== null) {
+    result.push("$$");
+    result.push(...envBuffer);
+    result.push("$$");
+  }
+
+  return result.join("\n");
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Mermaid helpers                                                           */
+/* -------------------------------------------------------------------------- */
 
 function sanitizeMermaidCode(input: string): string {
   let code = input;
 
   // Find the diagram declaration and keep from there onward.
-  const diagramStart = code.search(/(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|gantt|pie|erDiagram)\s/i);
+  const diagramStart = code.search(
+    /(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|gantt|pie|erDiagram)\s/i,
+  );
   if (diagramStart >= 0) {
     code = code.slice(diagramStart);
   }
@@ -84,6 +189,22 @@ function sanitizeMermaidCode(input: string): string {
     return `${id}["${safe}"]`;
   });
 
+  // Clean special characters inside quoted labels that break Mermaid.
+  code = code.replace(/"([^"]+)"/g, (_m, label: string) => {
+    let safe = label;
+    safe = safe.replace(/[{}#&\\$]/g, " ");
+    safe = safe.replace(/\s+/g, " ").trim();
+    return `"${safe}"`;
+  });
+
+  // Clean edge labels (between | … |).
+  code = code.replace(/\|([^|]+)\|/g, (_m, label: string) => {
+    let safe = label;
+    safe = safe.replace(/[{}#&\\"$]/g, " ");
+    safe = safe.replace(/\s+/g, " ").trim();
+    return `|${safe}|`;
+  });
+
   // Normalize unicode subscripts.
   const subMap: Record<string, string> = {
     "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4",
@@ -92,21 +213,50 @@ function sanitizeMermaidCode(input: string): string {
   code = code.replace(/[₀₁₂₃₄₅₆₇₈₉]/g, (c) => subMap[c] ?? c);
 
   // Normalize curly quotes.
-  code = code.replace(/[""]/g, '"');
-  code = code.replace(/['']/g, "'");
+  code = code.replace(/[\u201C\u201D]/g, '"');
+  code = code.replace(/[\u2018\u2019]/g, "'");
 
   // Remove trailing periods on lines (Mermaid rejects them).
   code = code.replace(/\.+$/gm, "");
 
+  // Remove ::: class assignments.
+  code = code.replace(/:::\w+/g, "");
+
   return code;
 }
 
-/** Remove any stray DOM elements that Mermaid injects into document.body on parse errors. */
+/** Aggressively simplify Mermaid code for a retry after initial parse failure. */
+function simplifyMermaidCode(code: string): string {
+  let s = code;
+
+  // Flatten subgraph blocks (keep connections, drop structure).
+  s = s.replace(/^\s*subgraph\s+.*$/gm, "");
+  s = s.replace(/^\s*end\s*$/gm, "");
+
+  // Remove style / class directives.
+  s = s.replace(/^\s*(style|classDef|class|linkStyle|click)\s+.*$/gm, "");
+
+  // Strip HTML tags from labels.
+  s = s.replace(/<[^>]+>/g, "");
+
+  // Truncate long quoted labels.
+  s = s.replace(/"([^"]{35,})"/g, (_m, label: string) => `"${label.substring(0, 30)}..."`);
+
+  // Remove empty lines.
+  s = s
+    .split("\n")
+    .filter((l) => l.trim() !== "")
+    .join("\n");
+
+  return s;
+}
+
+/** Remove stray DOM elements that Mermaid injects into document.body on parse errors. */
 function cleanupMermaidArtifacts(idPrefix: string) {
   if (typeof document === "undefined") return;
-  // Mermaid creates elements with id "d{renderID}" and sometimes leaves error text nodes
-  document.querySelectorAll(`[id^="d${idPrefix}"], [id^="${idPrefix}"]`).forEach((el) => el.remove());
-  // Also remove any orphaned error text that Mermaid dumps into body
+  document
+    .querySelectorAll(`[id^="d${idPrefix}"], [id^="${idPrefix}"]`)
+    .forEach((el) => el.remove());
   const body = document.body;
   for (let i = body.childNodes.length - 1; i >= 0; i--) {
     const node = body.childNodes[i];
@@ -117,7 +267,6 @@ function cleanupMermaidArtifacts(idPrefix: string) {
     ) {
       node.remove();
     }
-    // Mermaid also creates <div id="d..."> containers for failed renders
     if (
       node instanceof HTMLElement &&
       (node.id.startsWith("d") || node.id.startsWith("mermaid")) &&
@@ -130,63 +279,83 @@ function cleanupMermaidArtifacts(idPrefix: string) {
 
 let mermaidCounter = 0;
 
+const MERMAID_INIT = {
+  startOnLoad: false,
+  theme: "base" as const,
+  themeVariables: {
+    background: "#0d1117",
+    primaryColor: "#1a2332",
+    primaryTextColor: "#e6edf3",
+    primaryBorderColor: "#30363d",
+    lineColor: "#58a6ff",
+    secondaryColor: "#161b22",
+    tertiaryColor: "#0d1117",
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif",
+    fontSize: "14px",
+  },
+  securityLevel: "loose" as const,
+  flowchart: { curve: "basis" as const, htmlLabels: true, padding: 16 },
+};
+
+function makeResponsiveSvg(svg: string): string {
+  let s = svg;
+  s = s.replace(/(<svg[^>]*?)\s+height="[^"]*"/i, "$1");
+  s = s.replace(/(<svg[^>]*?)\s+width="[^"]*"/i, '$1 width="100%"');
+  return s;
+}
+
 function MermaidDiagram({ code }: { code: string }) {
   const [svg, setSvg] = useState<string>("");
-  const [error, setError] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const idPrefix = useRef(`mmd-${++mermaidCounter}`).current;
 
   useEffect(() => {
     let mounted = true;
-    // Debounce: during streaming the code changes every ~50ms — wait until it stabilizes
+
     const timer = setTimeout(async () => {
       if (!mounted) return;
 
-      // Create an offscreen container so Mermaid errors don't pollute the visible page
       const offscreen = document.createElement("div");
-      offscreen.style.cssText = "position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;";
+      offscreen.style.cssText =
+        "position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;";
       document.body.appendChild(offscreen);
 
       try {
-        const sanitizedCode = sanitizeMermaidCode(code);
         const mermaid = (await import("mermaid")).default;
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: "base",
-          themeVariables: {
-            background: "#0d1117",
-            primaryColor: "#1a2332",
-            primaryTextColor: "#e6edf3",
-            primaryBorderColor: "#30363d",
-            lineColor: "#58a6ff",
-            secondaryColor: "#161b22",
-            tertiaryColor: "#0d1117",
-            fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif",
-            fontSize: "14px",
-          },
-          securityLevel: "loose",
-          flowchart: { curve: "basis", htmlLabels: true, padding: 16 },
-        });
+        mermaid.initialize(MERMAID_INIT);
 
-        const renderId = `${idPrefix}-${Date.now()}`;
-        const rendered = await mermaid.render(renderId, sanitizedCode, offscreen);
-        if (!mounted) return;
+        const sanitized = sanitizeMermaidCode(code);
 
-        // Make the SVG responsive: remove hardcoded width/height, keep viewBox
-        let responsiveSvg = rendered.svg;
-        responsiveSvg = responsiveSvg.replace(/(<svg[^>]*?)\s+height="[^"]*"/i, "$1");
-        responsiveSvg = responsiveSvg.replace(
-          /(<svg[^>]*?)\s+width="[^"]*"/i,
-          '$1 width="100%"',
-        );
+        // Attempt 1: sanitized code
+        try {
+          const id1 = `${idPrefix}-${Date.now()}`;
+          const r1 = await mermaid.render(id1, sanitized, offscreen);
+          if (!mounted) return;
+          setSvg(makeResponsiveSvg(r1.svg));
+          return;
+        } catch {
+          cleanupMermaidArtifacts(idPrefix);
+          offscreen.innerHTML = "";
+        }
 
-        setSvg(responsiveSvg);
-        setError(false);
+        // Attempt 2: aggressively simplified
+        const simplified = simplifyMermaidCode(sanitized);
+        try {
+          const id2 = `${idPrefix}-r-${Date.now()}`;
+          const r2 = await mermaid.render(id2, simplified, offscreen);
+          if (!mounted) return;
+          setSvg(makeResponsiveSvg(r2.svg));
+          return;
+        } catch {
+          cleanupMermaidArtifacts(idPrefix);
+        }
+
+        // Both attempts failed — show source code as fallback
+        if (mounted) setFailed(true);
       } catch {
-        if (!mounted) return;
-        setError(true);
+        if (mounted) setFailed(true);
       } finally {
-        // Always clean up: remove offscreen container and any stray mermaid artifacts
         offscreen.remove();
         cleanupMermaidArtifacts(idPrefix);
         if (mounted) setLoading(false);
@@ -209,12 +378,9 @@ function MermaidDiagram({ code }: { code: string }) {
     );
   }
 
-  if (error) {
-    return (
-      <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-300/80">
-        Diagram could not be rendered. Try asking to regenerate Stage 2 with a simpler Mermaid flowchart.
-      </div>
-    );
+  // Fallback: show the Mermaid source as a syntax-highlighted code block
+  if (failed) {
+    return <CodeBlock language="mermaid" code={code} />;
   }
 
   return (
@@ -224,6 +390,10 @@ function MermaidDiagram({ code }: { code: string }) {
     />
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Code block                                                                */
+/* -------------------------------------------------------------------------- */
 
 function CodeBlock({ language, code }: { language: string; code: string }) {
   const [copied, setCopied] = useState(false);
@@ -263,6 +433,10 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Exported component                                                        */
+/* -------------------------------------------------------------------------- */
 
 export function MarkdownMessage({ content }: MarkdownMessageProps) {
   const normalizedContent = useMemo(() => normalizeAssistantContent(content), [content]);
@@ -305,10 +479,20 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
             );
           },
           th(props) {
-            return <th className="border-b border-app-border bg-app-panel-2 px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-app-muted" {...props} />;
+            return (
+              <th
+                className="border-b border-app-border bg-app-panel-2 px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-app-muted"
+                {...props}
+              />
+            );
           },
           td(props) {
-            return <td className="border-b border-app-border/50 px-4 py-2 text-sm" {...props} />;
+            return (
+              <td
+                className="border-b border-app-border/50 px-4 py-2 text-sm"
+                {...props}
+              />
+            );
           },
         }}
       >

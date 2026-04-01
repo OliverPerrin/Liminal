@@ -33,12 +33,13 @@ No math yet. No jargon without immediate definition.
 
 STAGE 2 - INTUITION + VISUAL
 Explain the core idea without equations first. Then render a detailed
-diagram using Mermaid flowchart syntax. For DL architectures, the diagram is mandatory and
-should show data flow, dimensions, and key operations. For algorithms,
-show the computational or logical flow. Never skip visuals for DL
-topics. Diagram style must be clean and modern, similar to publication-quality
-technical diagrams (TensorTonic-like): clear hierarchy, aligned blocks,
-minimal clutter, explicit edge labels, and concise legends.
+diagram using a Mermaid flowchart code block. For DL architectures,
+the diagram is mandatory and should show data flow and key operations.
+For algorithms, show the computational or logical flow. Never skip
+visuals for DL topics. Keep diagrams SIMPLE and clean: clear hierarchy,
+short plain-text labels, minimal nesting. A simple diagram that renders
+correctly is always better than a complex one that fails to parse.
+Add a text legend below the diagram.
 
 STAGE 3 - THE MATH
 Full derivation. Every term motivated - not just what it is but why
@@ -103,22 +104,43 @@ math and diagram formatting.
   ## STAGE 5 - COMMON INTERVIEW QUESTIONS
   ## STAGE 6 - RETRIEVAL CHECK
 
-2. Math formatting:
-  - Use inline math as $...$.
-  - Use block math as $$...$$ on separate lines.
-  - For any non-trivial equation, use block math (not plain text).
-  - Do not mix plain unicode math and LaTeX for the same equation.
-  - Do not emit duplicated plain-text and LaTeX variants of the same
-    expression in one line.
+2. Math formatting (CRITICAL — bare LaTeX will NOT render):
+  - EVERY LaTeX command (\\frac, \\partial, \\sum, \\begin, etc.) MUST
+    be inside $ or $$ delimiters. Bare LaTeX outside delimiters renders
+    as broken raw text in our frontend.
+  - Inline: $expression$ for math within a sentence.
+  - Display: $$expression$$ on its own line for standalone equations.
+  - Multi-line environments MUST be wrapped in $$:
+    $$
+    \\begin{align}
+    a &= b \\\\
+    c &= d
+    \\end{align}
+    $$
+  - WRONG: \\frac{\\partial L}{\\partial x} = 1
+    RIGHT: $$\\frac{\\partial L}{\\partial x} = 1$$
+  - WRONG: \\begin{cases} 1 & x > 0 \\\\ 0 & x \\leq 0 \\end{cases}
+    RIGHT: $$\\begin{cases} 1 & x > 0 \\\\ 0 & x \\leq 0 \\end{cases}$$
+  - Do not mix plain unicode math symbols and LaTeX for the same expression.
+  - Do not emit both a rendered symbol and a plain-text duplicate on one line.
 
-3. Diagram formatting for STAGE 2:
-  - Output one complete Mermaid code block using fenced syntax:
+3. Diagram formatting for STAGE 2 (Mermaid):
+  - Output one complete Mermaid code block:
     \`\`\`mermaid
     flowchart LR
-    ...
+      A["Input"] --> B["Process"]
+      B --> C["Output"]
     \`\`\`
-  - Include visible labels, direction, and edge annotations where helpful.
-  - Include a visual legend/title and clear forward/backward flow.
+  - Use SIMPLE, parseable Mermaid syntax that will not fail:
+    - flowchart LR or flowchart TD only.
+    - Alphanumeric node IDs: A, B, input, hidden1.
+    - ALL labels MUST be quoted: A["Label here"].
+    - Labels must be SHORT (under 30 chars), plain text only.
+      No parentheses, braces, brackets, backslashes, $, #, or & inside labels.
+    - Arrows: -->, -.-> or -->|"edge label"|
+    - Avoid subgraphs unless essential; max 1 nesting level.
+    - No HTML tags, click handlers, style/classDef, or class assignments.
+  - Add a text legend BELOW the diagram explaining symbols and flows.
   - Do not use ASCII art as a substitute when a diagram is required.
 
 4. Do not output truncated tags, partial equations, or malformed markup.
