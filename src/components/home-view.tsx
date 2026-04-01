@@ -502,17 +502,12 @@ export function HomeView({ userId }: HomeViewProps) {
     <div className="flex h-screen flex-col overflow-hidden">
       <AppHeader studiedCount={studiedTopicsCount} />
 
-      <div
-        className={cn(
-          "mx-auto grid w-full max-w-[1800px] flex-1 overflow-hidden",
-          historyOpen
-            ? "lg:grid-cols-[280px_minmax(0,1fr)_260px]"
-            : "lg:grid-cols-[280px_minmax(0,1fr)_44px]",
-        )}
-      >
+      {/* Three-column shell — each column is an independent scroll context */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+
         {/* ── Topic Browser ─────────────────────────────────────────────────── */}
-        <aside className="hidden flex-col border-r border-app-border bg-app-panel lg:flex">
-          <div className="border-b border-app-border p-3">
+        <aside className="hidden w-[280px] shrink-0 flex-col border-r border-app-border bg-app-panel lg:flex">
+          <div className="shrink-0 border-b border-app-border p-3">
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-app-muted/60" />
               <input
@@ -604,7 +599,7 @@ export function HomeView({ userId }: HomeViewProps) {
           </div>
 
           {studiedTopicsCount > 0 && (
-            <div className="border-t border-app-border px-3 py-2.5">
+            <div className="shrink-0 border-t border-app-border px-3 py-2.5">
               <p className="text-[11px] text-app-muted/60">
                 <span className="font-semibold text-app-muted">{studiedTopicsCount}</span>{" "}
                 topic{studiedTopicsCount !== 1 ? "s" : ""} studied
@@ -614,9 +609,9 @@ export function HomeView({ userId }: HomeViewProps) {
         </aside>
 
         {/* ── Main chat ─────────────────────────────────────────────────────── */}
-        <main className="flex min-h-0 flex-col overflow-hidden bg-app-bg">
-          {/* Chat header */}
-          <div className="flex min-h-0 items-center gap-3 border-b border-app-border bg-app-panel px-5 py-3">
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-bg">
+          {/* Chat header — shrink-0 so it never gets compressed */}
+          <div className="flex shrink-0 items-center gap-3 border-b border-app-border bg-app-panel px-5 py-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 {activeTopic && (
@@ -695,9 +690,9 @@ export function HomeView({ userId }: HomeViewProps) {
             </div>
           </div>
 
-          {/* Continue / quick review suggestion area */}
+          {/* Continue / quick review suggestion area — shrink-0 so it never gets compressed */}
           {(showContinue || (currentStage >= 2 && !isStreaming && messages.length > 0)) && (
-            <div className="border-t border-app-border/50 bg-app-panel/50 px-4 py-2.5">
+            <div className="shrink-0 border-t border-app-border/50 bg-app-panel/50 px-4 py-2.5">
               <div className="mx-auto flex max-w-4xl items-center gap-2 sm:px-4">
                 {showContinue && (
                   <button
@@ -725,8 +720,8 @@ export function HomeView({ userId }: HomeViewProps) {
             </div>
           )}
 
-          {/* Input */}
-          <div className="border-t border-app-border bg-app-panel px-3 py-3 sm:px-4">
+          {/* Input — shrink-0 so it stays pinned to the bottom */}
+          <div className="shrink-0 border-t border-app-border bg-app-panel px-3 py-3 sm:px-4">
             <div className="mx-auto max-w-4xl">
               <div className="flex items-end gap-2">
                 <input
@@ -778,13 +773,13 @@ export function HomeView({ userId }: HomeViewProps) {
         {/* ── History sidebar ───────────────────────────────────────────────── */}
         <aside
           className={cn(
-            "hidden border-l border-app-border bg-app-panel lg:flex lg:flex-col",
-            !historyOpen && "items-center",
+            "hidden shrink-0 flex-col border-l border-app-border bg-app-panel lg:flex",
+            historyOpen ? "w-[260px]" : "w-11 items-center",
           )}
         >
           <div
             className={cn(
-              "flex items-center border-b border-app-border p-2",
+              "flex shrink-0 items-center border-b border-app-border p-2",
               historyOpen ? "justify-between" : "justify-center",
             )}
           >
