@@ -3,6 +3,7 @@ import { TOPIC_TAXONOMY } from "@/lib/topics";
 import { getCurrentUser } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
 import { Logo } from "@/components/logo";
+import { NeuralCanvas } from "@/components/neural-canvas";
 
 const STAGE_CARDS = [
   {
@@ -43,6 +44,14 @@ const STAGE_CARDS = [
   },
 ];
 
+const DOMAIN_STATS = [
+  { label: "Classical ML", color: "#f59e0b" },
+  { label: "Deep Learning", color: "#818cf8" },
+  { label: "Reinforcement Learning", color: "#2dd4bf" },
+  { label: "Training Engineering", color: "#38bdf8" },
+  { label: "Systems & MLOps", color: "#fb923c" },
+];
+
 const DOMAIN_COLORS: Record<string, string> = {
   "Classical ML": "#f59e0b",
   "Deep Learning": "#818cf8",
@@ -60,7 +69,7 @@ export default async function AboutPage() {
       {user ? (
         <AppHeader />
       ) : (
-        <header className="border-b border-app-border bg-app-panel/95 backdrop-blur-sm">
+        <header className="relative z-30 border-b border-app-border bg-app-panel/95 backdrop-blur-sm">
           <div className="mx-auto flex h-11 w-full max-w-5xl items-center justify-between px-6">
             <div className="flex items-center gap-2 text-[13px] font-bold text-app-fg">
               <Logo size={22} className="text-app-accent" />
@@ -68,7 +77,7 @@ export default async function AboutPage() {
             </div>
             <Link
               href="/auth"
-              className="rounded-lg bg-app-accent px-4 py-1.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+              className="rounded-lg bg-app-accent px-4 py-1.5 text-[13px] font-semibold text-white transition-all hover:opacity-90 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]"
             >
               Get started
             </Link>
@@ -77,66 +86,128 @@ export default async function AboutPage() {
       )}
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section className="mx-auto w-full max-w-5xl px-6 pb-16 pt-24 text-center">
-        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-app-border bg-app-panel px-4 py-1.5 text-[12px] font-medium text-app-accent">
-          <div className="h-1.5 w-1.5 rounded-full bg-app-accent" />
-          Research Engineer · MLE · Research Scientist · Applied Scientist
+      <section className="relative min-h-[540px] overflow-hidden">
+        {/* Neural network background */}
+        <NeuralCanvas />
+        {/* Radial gradient overlay for text legibility */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 70% at 50% 50%, rgba(9,9,15,0.82) 0%, rgba(9,9,15,0.6) 60%, transparent 100%)",
+          }}
+        />
+        {/* Edge fades */}
+        <div
+          className="absolute inset-x-0 bottom-0 h-32"
+          style={{ background: "linear-gradient(to bottom, transparent, #09090f)" }}
+        />
+        {/* Content */}
+        <div className="relative z-10 mx-auto w-full max-w-5xl px-6 pb-20 pt-24 text-center">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-app-border bg-app-panel/80 px-4 py-1.5 text-[12px] font-medium text-app-accent backdrop-blur-sm">
+            <div className="h-1.5 w-1.5 rounded-full bg-app-accent" />
+            Research Engineer · MLE · Research Scientist · Applied Scientist
+          </div>
+          <h1 className="mb-6 text-4xl font-bold leading-tight tracking-tight text-app-fg sm:text-5xl lg:text-6xl">
+            The structured path to your
+            <br />
+            <span
+              style={{
+                background: "linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #818cf8 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              ML interview
+            </span>
+          </h1>
+          <p className="mx-auto mb-10 max-w-2xl text-lg leading-8 text-app-muted">
+            Upload your resume. Get personalized STAR stories. Study any ML/DL/RL topic through a
+            structured 6-stage session — from intuition to derivation to production code — grounded
+            in your own project experience.
+          </p>
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <Link
+              href={user ? "/home" : "/auth"}
+              className="rounded-xl bg-app-accent px-8 py-3 text-[15px] font-semibold text-white shadow-lg shadow-app-accent/25 transition-all hover:opacity-90 hover:shadow-[0_0_40px_rgba(16,185,129,0.35)]"
+            >
+              {user ? "Start studying" : "Start for free →"}
+            </Link>
+            <a
+              href="#how-it-works"
+              className="rounded-xl border border-app-border/70 bg-app-panel/60 px-8 py-3 text-[15px] font-medium text-app-muted backdrop-blur-sm transition-colors hover:border-app-border hover:text-app-fg"
+            >
+              How it works
+            </a>
+          </div>
         </div>
-        <h1 className="mb-6 text-4xl font-bold leading-tight tracking-tight text-app-fg sm:text-5xl">
-          The structured path to your
-          <br />
-          <span
-            style={{
-              background: "linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #818cf8 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            ML interview
-          </span>
-        </h1>
-        <p className="mx-auto mb-10 max-w-2xl text-lg leading-8 text-app-muted">
-          Upload your resume. Get personalized STAR stories. Study any ML/DL/RL topic through a
-          structured 6-stage session — from intuition to derivation to production code — grounded in your
-          own project experience.
-        </p>
-        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <Link
-            href={user ? "/home" : "/auth"}
-            className="rounded-xl bg-app-accent px-8 py-3 text-[15px] font-semibold text-white shadow-lg shadow-app-accent/25 transition-all hover:opacity-90 hover:shadow-app-accent/40"
-          >
-            {user ? "Start studying" : "Start for free"}
-          </Link>
-          <a
-            href="#how-it-works"
-            className="rounded-xl border border-app-border px-8 py-3 text-[15px] font-medium text-app-muted transition-colors hover:border-app-border/80 hover:text-app-fg"
-          >
-            How it works
-          </a>
+      </section>
+
+      {/* ── Stats strip ──────────────────────────────────────────────────── */}
+      <section className="border-y border-app-border bg-app-panel/60 backdrop-blur-sm">
+        <div className="mx-auto max-w-5xl px-6 py-4">
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+            <div className="flex items-center gap-2 text-[13px]">
+              <span className="font-mono text-[11px] text-app-muted/60">&lt;/&gt;</span>
+              <span className="font-bold text-app-fg">{totalTopics}+</span>
+              <span className="text-app-muted">ML Topics</span>
+            </div>
+            <div className="h-3.5 w-px bg-app-border" />
+            <div className="flex items-center gap-2 text-[13px]">
+              <span className="font-mono text-[11px] text-app-muted/60">⬡</span>
+              <span className="font-bold text-app-fg">6</span>
+              <span className="text-app-muted">Session Stages</span>
+            </div>
+            <div className="h-3.5 w-px bg-app-border" />
+            <div className="flex items-center gap-3 text-[13px]">
+              <span className="text-app-muted">5 Domains</span>
+              <div className="flex items-center gap-1">
+                {DOMAIN_STATS.map((d) => (
+                  <div
+                    key={d.label}
+                    title={d.label}
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: d.color }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="h-3.5 w-px bg-app-border" />
+            <div className="flex items-center gap-2 text-[13px]">
+              <span className="font-mono text-[11px] text-app-muted/60">✦</span>
+              <span className="text-app-muted">AI-personalized to your resume</span>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* ── Value props ──────────────────────────────────────────────────── */}
-      <section className="border-y border-app-border bg-app-panel/50">
-        <div className="mx-auto max-w-5xl px-6 py-10">
+      <section className="border-b border-app-border bg-app-panel/30">
+        <div className="mx-auto max-w-5xl px-6 py-12">
           <div className="grid gap-8 sm:grid-cols-3">
             {[
               {
+                icon: "⊘",
                 title: "Not a chatbot",
                 desc: "Every session follows a rigid 6-stage structure. You can't skip stages, and the AI won't let you rush the derivation.",
               },
               {
+                icon: "◈",
                 title: "Grounded in your work",
                 desc: "Your resume and STAR stories are injected into every session. The retrieval check asks about your specific implementation choices.",
               },
               {
+                icon: "▲",
                 title: "Interview-calibrated depth",
                 desc: "Calibrated to someone who has read the original papers and implemented models from scratch. Deeper, not shallower.",
               },
             ].map((item) => (
-              <div key={item.title}>
-                <h3 className="mb-2 text-[14px] font-semibold text-app-fg">{item.title}</h3>
-                <p className="text-[13px] leading-6 text-app-muted">{item.desc}</p>
+              <div key={item.title} className="flex gap-4">
+                <span className="mt-0.5 shrink-0 text-[18px] text-app-accent/60">{item.icon}</span>
+                <div>
+                  <h3 className="mb-2 text-[14px] font-semibold text-app-fg">{item.title}</h3>
+                  <p className="text-[13px] leading-6 text-app-muted">{item.desc}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -156,7 +227,7 @@ export default async function AboutPage() {
           {STAGE_CARDS.map((stage) => (
             <div
               key={stage.n}
-              className="rounded-xl border border-app-border bg-app-panel p-5 transition-colors hover:border-[#3d3e5a]"
+              className="rounded-xl border border-app-border bg-app-panel p-5 transition-all hover:border-[#3d3e5a] hover:shadow-[0_0_20px_rgba(0,0,0,0.3)]"
               style={{ borderLeft: `3px solid ${stage.color}` }}
             >
               <div className="mb-3 flex items-center gap-3">
@@ -180,9 +251,9 @@ export default async function AboutPage() {
           <p className="text-[13px] leading-6 text-app-muted">
             After each stage the AI pauses:{" "}
             <em className="text-app-fg">"Ready to continue, or any questions before we move on?"</em>{" "}
-            Type <em className="text-app-fg">"continue"</em> to advance, or ask any clarifying question
-            — the AI answers it fully, then resumes from where it left off. A quick-action button also
-            appears so you don&apos;t have to type.
+            Type <em className="text-app-fg">"continue"</em> to advance, or ask any clarifying
+            question — the AI answers it fully, then resumes from where it left off. A quick-action
+            button also appears so you don&apos;t have to type.
           </p>
         </div>
       </section>
@@ -196,13 +267,14 @@ export default async function AboutPage() {
                 Sessions grounded in your experience
               </h2>
               <p className="mb-5 text-[14px] leading-7 text-app-muted">
-                Upload your resume PDF and the platform extracts your experience, projects, and skills,
-                then generates 6–8 STAR stories mapped to common behavioral questions.
+                Upload your resume PDF and the platform extracts your experience, projects, and
+                skills, then generates 6–8 STAR stories mapped to common behavioral questions.
               </p>
               <p className="mb-5 text-[14px] leading-7 text-app-muted">
                 Every session injects your full profile into the system prompt. The Stage 6 retrieval
-                check is grounded in your work — if you built an attention-based model, the AI asks about{" "}
-                <em className="text-app-fg">your</em> implementation choices, not a generic one.
+                check is grounded in your work — if you built an attention-based model, the AI asks
+                about <em className="text-app-fg">your</em> implementation choices, not a generic
+                one.
               </p>
               <p className="text-[14px] leading-7 text-app-muted">
                 Edit your STAR stories and extra context at any time on the Profile page. Changes
@@ -218,7 +290,7 @@ export default async function AboutPage() {
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="flex items-start gap-3 rounded-lg border border-app-border bg-app-panel-2 p-4"
+                  className="flex items-start gap-3 rounded-lg border border-app-border bg-app-panel-2 p-4 transition-colors hover:border-app-accent/20"
                 >
                   <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-app-accent" />
                   <div>
@@ -235,23 +307,24 @@ export default async function AboutPage() {
       {/* ── Session history + revision cards ─────────────────────────────── */}
       <section className="mx-auto w-full max-w-5xl px-6 py-16">
         <div className="grid gap-6 sm:grid-cols-2">
-          <div className="rounded-xl border border-app-border bg-app-panel p-6">
+          <div className="rounded-xl border border-app-border bg-app-panel p-6 transition-colors hover:border-[#3d3e5a]">
             <h3 className="mb-3 text-[15px] font-semibold text-app-fg">Session history</h3>
             <p className="mb-4 text-[13px] leading-6 text-app-muted">
-              Every session is saved. Click any past session in the history sidebar to reload the full
-              conversation and continue from where you left off. The sidebar shows topic, stage reached, and date.
+              Every session is saved. Click any past session in the history sidebar to reload the
+              full conversation and continue from where you left off. The sidebar shows topic, stage
+              reached, and date.
             </p>
             <p className="text-[13px] leading-6 text-app-muted">
               Topic mastery is tracked locally — a colored dot in the topic browser shows topics
               you&apos;ve studied and roughly how many sessions on each.
             </p>
           </div>
-          <div className="rounded-xl border border-app-border bg-app-panel p-6">
+          <div className="rounded-xl border border-app-border bg-app-panel p-6 transition-colors hover:border-[#3d3e5a]">
             <h3 className="mb-3 text-[15px] font-semibold text-app-fg">Revision cards</h3>
             <p className="mb-4 text-[13px] leading-6 text-app-muted">
-              After Stage 2 or later, a "Revision card" button appears. Click it to generate a compact
-              summary: core concept, key equations, the one implementation detail that distinguishes strong
-              candidates, and the two most likely interview questions.
+              After Stage 2 or later, a "Revision card" button appears. Click it to generate a
+              compact summary: core concept, key equations, the one implementation detail that
+              distinguishes strong candidates, and the two most likely interview questions.
             </p>
             <p className="text-[13px] leading-6 text-app-muted">
               Designed for rapid pre-interview review — the night before your loop.
@@ -268,7 +341,8 @@ export default async function AboutPage() {
               {totalTopics} topics across 5 domains
             </h2>
             <p className="text-app-muted">
-              Coverage for the full ML interview loop — classical models to LLM internals to RL theory.
+              Coverage for the full ML interview loop — classical models to LLM internals to RL
+              theory.
             </p>
           </div>
 
@@ -279,7 +353,8 @@ export default async function AboutPage() {
               return (
                 <div
                   key={domain.name}
-                  className="rounded-xl border border-app-border bg-app-panel p-5"
+                  className="rounded-xl border border-app-border bg-app-panel p-5 transition-colors hover:border-[#3d3e5a]"
+                  style={{ borderTop: `2px solid ${color}20` }}
                 >
                   <div className="mb-4 flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full" style={{ background: color }} />
@@ -320,9 +395,9 @@ export default async function AboutPage() {
           </p>
           <Link
             href={user ? "/home" : "/auth"}
-            className="inline-block rounded-xl bg-app-accent px-10 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-app-accent/25 transition-all hover:opacity-90"
+            className="inline-block rounded-xl bg-app-accent px-10 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-app-accent/25 transition-all hover:opacity-90 hover:shadow-[0_0_40px_rgba(16,185,129,0.35)]"
           >
-            {user ? "Go to sessions" : "Create free account"}
+            {user ? "Go to sessions" : "Create free account →"}
           </Link>
         </div>
       </section>

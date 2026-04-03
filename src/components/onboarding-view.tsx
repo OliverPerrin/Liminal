@@ -264,38 +264,44 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-8">
       {/* Step indicator */}
-      <div className="mb-8 flex items-center gap-0">
+      <div className="mb-10 flex items-center">
         {STEPS.map((s, i) => (
-          <div key={s.n} className="flex items-center">
-            <div className="flex items-center gap-2">
+          <div key={s.n} className="flex flex-1 items-center">
+            <div className="flex items-center gap-2.5">
               <div
                 className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold transition-colors",
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold transition-all duration-300",
                   step === s.n
-                    ? "bg-app-accent text-white"
+                    ? "bg-app-accent text-white shadow-[0_0_12px_rgba(16,185,129,0.5)]"
                     : step > s.n
-                    ? "bg-app-accent/25 text-app-accent"
-                    : "bg-app-panel-2 text-app-muted/50",
+                    ? "bg-app-accent/20 text-app-accent ring-1 ring-app-accent/30"
+                    : "bg-app-panel-2 text-app-muted/40 ring-1 ring-app-border",
                 )}
               >
-                {step > s.n ? "✓" : s.n}
+                {step > s.n ? (
+                  <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M1.5 6l3 3 5.5-5.5" />
+                  </svg>
+                ) : s.n}
               </div>
               <span
                 className={cn(
-                  "text-[13px] font-medium transition-colors",
-                  step === s.n ? "text-app-fg" : "text-app-muted/50",
+                  "hidden text-[13px] font-medium transition-colors sm:block",
+                  step === s.n ? "text-app-fg" : step > s.n ? "text-app-accent/70" : "text-app-muted/40",
                 )}
               >
                 {s.label}
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div
-                className={cn(
-                  "mx-3 h-px w-10 transition-colors",
-                  step > s.n ? "bg-app-accent/30" : "bg-app-border",
-                )}
-              />
+              <div className="mx-3 flex-1">
+                <div className="h-px overflow-hidden rounded-full bg-app-border">
+                  <div
+                    className="h-full bg-app-accent/40 transition-all duration-500"
+                    style={{ width: step > s.n ? "100%" : "0%" }}
+                  />
+                </div>
+              </div>
             )}
           </div>
         ))}
@@ -303,7 +309,7 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
 
       {/* ── Step 1: Upload ─────────────────────────────────────────────── */}
       {step === 1 && (
-        <div className="space-y-5">
+        <div className="space-y-5 transition-all duration-300">
           <div>
             <h1 className="text-xl font-bold text-app-fg">Upload your resume</h1>
             <p className="mt-1.5 text-[14px] text-app-muted">
@@ -379,7 +385,7 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
               type="button"
               onClick={handleParseResume}
               disabled={parsing || !resumeFile}
-              className="flex items-center gap-2 rounded-lg bg-app-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow shadow-app-accent/20 transition-all hover:opacity-90 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-app-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow shadow-app-accent/20 transition-all hover:opacity-90 hover:shadow-[0_0_24px_rgba(16,185,129,0.35)] disabled:opacity-50"
             >
               {parsing && <Loader2 className="h-4 w-4 animate-spin" />}
               {parsing ? "Extracting…" : "Extract + Generate STAR Stories"}
@@ -399,7 +405,7 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
 
       {/* ── Step 2: Review stories ─────────────────────────────────────── */}
       {step === 2 && (
-        <div className="space-y-5">
+        <div className="space-y-5 transition-all duration-300">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-xl font-bold text-app-fg">Review your STAR stories</h1>
@@ -461,9 +467,9 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
             <button
               type="button"
               onClick={() => setStep(3)}
-              className="rounded-lg bg-app-accent px-5 py-2.5 text-[14px] font-semibold text-white transition-all hover:opacity-90"
+              className="rounded-lg bg-app-accent px-5 py-2.5 text-[14px] font-semibold text-white transition-all hover:opacity-90 hover:shadow-[0_0_24px_rgba(16,185,129,0.35)]"
             >
-              Continue
+              Continue →
             </button>
           </div>
         </div>
@@ -471,7 +477,7 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
 
       {/* ── Step 3: Extra context + save ──────────────────────────────── */}
       {step === 3 && (
-        <div className="space-y-5">
+        <div className="space-y-5 transition-all duration-300">
           <div>
             <h1 className="text-xl font-bold text-app-fg">Anything else to know?</h1>
             <p className="mt-1.5 text-[14px] text-app-muted">
@@ -528,7 +534,7 @@ export function OnboardingView({ userId }: OnboardingViewProps) {
               type="button"
               onClick={handleSaveProfile}
               disabled={!canSave || saving}
-              className="flex items-center gap-2 rounded-lg bg-app-accent px-6 py-2.5 text-[14px] font-semibold text-white shadow shadow-app-accent/20 transition-all hover:opacity-90 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-app-accent px-6 py-2.5 text-[14px] font-semibold text-white shadow shadow-app-accent/20 transition-all hover:opacity-90 hover:shadow-[0_0_24px_rgba(16,185,129,0.35)] disabled:opacity-50"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? "Saving…" : "Save and start studying"}

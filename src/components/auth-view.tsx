@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { NeuralCanvas } from "@/components/neural-canvas";
 
 export function AuthView() {
   const router = useRouter();
@@ -63,11 +64,22 @@ export function AuthView() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-app-bg px-4">
+    <main className="relative flex min-h-screen flex-col items-center justify-center bg-app-bg px-4">
+      {/* Neural network background */}
+      <NeuralCanvas />
+      {/* Center fade overlay */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(9,9,15,0.88) 0%, rgba(9,9,15,0.6) 70%, transparent 100%)",
+        }}
+      />
+
       {/* Brand mark */}
       <Link
         href="/about"
-        className="mb-8 flex items-center gap-2.5 text-app-fg/80 transition-opacity hover:opacity-80"
+        className="relative z-10 mb-8 flex items-center gap-2.5 text-app-fg/80 transition-opacity hover:opacity-80"
       >
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-app-accent text-[11px] font-black text-white">
           LM
@@ -75,7 +87,7 @@ export function AuthView() {
         <span className="text-[15px] font-bold tracking-tight">LiminalML</span>
       </Link>
 
-      <section className="w-full max-w-sm rounded-2xl border border-app-border bg-app-panel p-7 shadow-2xl shadow-black/30">
+      <section className="relative z-10 w-full max-w-sm rounded-2xl border border-app-border bg-app-panel/80 p-7 shadow-2xl shadow-black/40 backdrop-blur-md">
         <h1 className="text-[18px] font-bold text-app-fg">
           {isSignup ? "Create your account" : "Welcome back"}
         </h1>
@@ -125,7 +137,7 @@ export function AuthView() {
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-app-accent px-4 py-2.5 text-[14px] font-semibold text-white shadow-lg shadow-app-accent/20 transition-all hover:opacity-90 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-app-accent px-4 py-2.5 text-[14px] font-semibold text-white shadow-lg shadow-app-accent/20 transition-all hover:opacity-90 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] disabled:opacity-50"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             {loading ? "Working…" : isSignup ? "Create account" : "Sign in"}
@@ -151,7 +163,7 @@ export function AuthView() {
         </button>
       </section>
 
-      <p className="mt-6 text-[12px] text-app-muted/40">
+      <p className="relative z-10 mt-6 text-[12px] text-app-muted/40">
         ML interview prep powered by Claude ·{" "}
         <Link href="/about" className="underline underline-offset-2 hover:text-app-muted">
           Learn more

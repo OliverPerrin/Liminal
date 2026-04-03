@@ -124,6 +124,7 @@ function StageProgressBar({ currentStage }: { currentStage: number }) {
                       background: `${stage.color}1a`,
                       color: stage.color,
                       border: `1px solid ${stage.color}50`,
+                      boxShadow: `0 0 8px ${stage.color}60`,
                     }
                   : isDone
                   ? {
@@ -191,7 +192,7 @@ function EmptyState({ onTopicClick }: { onTopicClick: (t: string) => void }) {
   ];
 
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-20 text-center">
+    <div className="flex flex-col items-center justify-center px-4 py-16 text-center" style={{ animation: "fadeIn 0.4s ease" }}>
       <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-app-border bg-app-panel-2">
         <BookOpen className="h-6 w-6 text-app-accent" />
       </div>
@@ -199,6 +200,30 @@ function EmptyState({ onTopicClick }: { onTopicClick: (t: string) => void }) {
       <p className="mb-8 max-w-sm text-sm leading-6 text-app-muted">
         Pick a topic from the sidebar for a structured 6-stage session, or type any ML topic below.
       </p>
+
+      {/* Stage preview pills */}
+      <div className="mb-8 flex flex-wrap justify-center gap-2">
+        {STAGE_CONFIG.map((stage) => (
+          <div
+            key={stage.n}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium"
+            style={{
+              background: `${stage.color}12`,
+              color: stage.color,
+              border: `1px solid ${stage.color}30`,
+            }}
+          >
+            <span
+              className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold"
+              style={{ background: stage.color, color: "#0e0f14" }}
+            >
+              {stage.n}
+            </span>
+            {stage.short}
+          </div>
+        ))}
+      </div>
+
       <div className="w-full max-w-md space-y-2">
         <p className="mb-3 text-left text-[11px] font-semibold uppercase tracking-widest text-app-muted/60">
           Popular topics
@@ -211,7 +236,7 @@ function EmptyState({ onTopicClick }: { onTopicClick: (t: string) => void }) {
               key={topic}
               type="button"
               onClick={() => onTopicClick(topic)}
-              className="flex w-full items-center gap-3 rounded-lg border border-app-border bg-app-panel px-3 py-2.5 text-left text-sm transition-colors hover:border-app-accent/40 hover:bg-app-panel-2"
+              className="flex w-full items-center gap-3 rounded-lg border border-app-border bg-app-panel px-3 py-2.5 text-left text-sm transition-all hover:border-app-accent/40 hover:bg-app-panel-2 hover:shadow-[0_0_12px_rgba(16,185,129,0.06)]"
             >
               <div
                 className="h-1.5 w-1.5 shrink-0 rounded-full"
@@ -487,7 +512,7 @@ export function HomeView({ userId }: HomeViewProps) {
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      const topic = (topicDraft || activeTopic || "Custom Topic").trim();
+      const topic = (topicDraft || activeTopic || messageInput.trim().slice(0, 60)).trim() || "Custom Topic";
       const shouldReset = !sessionId || (activeTopic ? topic !== activeTopic : false);
       void sendMessage(topic, messageInput, shouldReset);
     }
@@ -611,18 +636,30 @@ export function HomeView({ userId }: HomeViewProps) {
         {/* ── Main chat ─────────────────────────────────────────────────────── */}
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-bg">
           {/* Chat header — shrink-0 so it never gets compressed */}
-          <div className="flex shrink-0 items-center gap-3 border-b border-app-border bg-app-panel px-5 py-3">
+          <div
+            className="flex shrink-0 items-center gap-3 border-b border-app-border bg-app-panel px-5 py-3"
+            style={activeTopic ? { borderLeft: `2px solid ${domainAccentColor}60` } : undefined}
+          >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                {activeTopic && (
-                  <div
-                    className="h-2 w-2 shrink-0 rounded-full"
-                    style={{ background: domainAccentColor }}
-                  />
-                )}
                 <h1 className="truncate text-[13px] font-semibold text-app-fg">
                   {activeTopic ?? "New Session"}
                 </h1>
+                {currentStage > 0 && (() => {
+                  const stage = STAGE_CONFIG.find((s) => s.n === currentStage);
+                  return stage ? (
+                    <span
+                      className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                      style={{
+                        background: `${stage.color}18`,
+                        color: stage.color,
+                        border: `1px solid ${stage.color}30`,
+                      }}
+                    >
+                      {stage.short}
+                    </span>
+                  ) : null;
+                })()}
                 {isStreaming && (
                   <div className="flex items-center gap-1 text-[11px] text-app-accent/80">
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -630,12 +667,6 @@ export function HomeView({ userId }: HomeViewProps) {
                   </div>
                 )}
               </div>
-              {currentStage > 0 && !isStreaming && (
-                <p className="mt-0.5 text-[11px] text-app-muted/60">
-                  Stage {currentStage} of 6 ·{" "}
-                  {STAGE_CONFIG.find((s) => s.n === currentStage)?.label}
-                </p>
-              )}
             </div>
             {currentStage > 0 && (
               <StageProgressBar currentStage={currentStage} />
@@ -669,9 +700,8 @@ export function HomeView({ userId }: HomeViewProps) {
                     <div
                       key={`${message.createdAt}-${index}`}
                       className={cn(
-                        message.role === "user"
-                          ? "flex justify-end"
-                          : "",
+                        "message-enter",
+                        message.role === "user" ? "flex justify-end" : "",
                       )}
                     >
                       {message.role === "user" ? (
@@ -685,6 +715,13 @@ export function HomeView({ userId }: HomeViewProps) {
                       )}
                     </div>
                   ))}
+                  {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
+                    <div className="flex items-center gap-1.5 px-1 py-2">
+                      <span className="typing-dot h-1.5 w-1.5 rounded-full bg-app-accent/60" />
+                      <span className="typing-dot h-1.5 w-1.5 rounded-full bg-app-accent/60" />
+                      <span className="typing-dot h-1.5 w-1.5 rounded-full bg-app-accent/60" />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -694,18 +731,32 @@ export function HomeView({ userId }: HomeViewProps) {
           {(showContinue || (currentStage >= 2 && !isStreaming && messages.length > 0)) && (
             <div className="shrink-0 border-t border-app-border/50 bg-app-panel/50 px-4 py-2.5">
               <div className="mx-auto flex max-w-4xl items-center gap-2 sm:px-4">
-                {showContinue && (
-                  <button
-                    type="button"
-                    onClick={handleContinue}
-                    className="flex items-center gap-2 rounded-full border border-app-accent/40 bg-app-accent/8 px-4 py-1.5 text-[13px] font-medium text-app-accent transition-colors hover:bg-app-accent/15"
-                  >
-                    <span>Continue</span>
-                    {currentStage < 6 && (
-                      <span className="text-app-accent/60">→ Stage {currentStage + 1}</span>
-                    )}
-                  </button>
-                )}
+                {showContinue && (() => {
+                  const nextStage = STAGE_CONFIG.find((s) => s.n === currentStage + 1);
+                  const color = nextStage?.color ?? "#10b981";
+                  return (
+                    <button
+                      type="button"
+                      onClick={handleContinue}
+                      className="group flex items-center gap-2 rounded-full px-4 py-1.5 text-[13px] font-medium transition-all"
+                      style={{
+                        background: `${color}12`,
+                        color,
+                        border: `1px solid ${color}40`,
+                      }}
+                    >
+                      <span>Continue</span>
+                      {currentStage < 6 && (
+                        <span
+                          className="transition-transform group-hover:translate-x-0.5"
+                          style={{ color: `${color}80` }}
+                        >
+                          → Stage {currentStage + 1}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })()}
                 {currentStage >= 2 && !isStreaming && activeTopic && (
                   <button
                     type="button"
@@ -723,45 +774,39 @@ export function HomeView({ userId }: HomeViewProps) {
           {/* Input — shrink-0 so it stays pinned to the bottom */}
           <div className="shrink-0 border-t border-app-border bg-app-panel px-3 py-3 sm:px-4">
             <div className="mx-auto max-w-4xl">
-              <div className="flex items-end gap-2">
-                <input
-                  value={topicDraft}
-                  onChange={(e) => setTopicDraft(e.target.value)}
-                  placeholder="Topic"
-                  className="hidden w-40 shrink-0 rounded-lg border border-app-border bg-app-bg px-3 py-2 text-[13px] text-app-fg placeholder:text-app-muted/40 focus:border-app-accent/50 focus:outline-none focus:ring-1 focus:ring-app-accent/20 sm:block"
+              <div className="relative">
+                <textarea
+                  ref={textareaRef}
+                  value={messageInput}
+                  onChange={(e) => setMessageInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    showContinue
+                      ? "Type 'continue' or ask a question…"
+                      : activeTopic
+                      ? `Ask about ${activeTopic}…`
+                      : "Type a topic or question to start a session…"
+                  }
+                  rows={1}
+                  className="w-full resize-none rounded-xl border border-app-border bg-app-bg px-4 py-2.5 pr-10 text-[13px] text-app-fg placeholder:text-app-muted/40 focus:border-app-accent/50 focus:outline-none focus:ring-1 focus:ring-app-accent/20"
                 />
-                <div className="relative min-w-0 flex-1">
-                  <textarea
-                    ref={textareaRef}
-                    value={messageInput}
-                    onChange={(e) => setMessageInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={
-                      showContinue
-                        ? "Type 'continue' or ask a question…"
-                        : "Ask a question or type a topic to start…"
-                    }
-                    rows={1}
-                    className="w-full resize-none rounded-xl border border-app-border bg-app-bg px-4 py-2.5 pr-10 text-[13px] text-app-fg placeholder:text-app-muted/40 focus:border-app-accent/50 focus:outline-none focus:ring-1 focus:ring-app-accent/20"
-                  />
-                  <button
-                    type="button"
-                    disabled={isStreaming || !messageInput.trim()}
-                    onClick={() => {
-                      const topic = (topicDraft || activeTopic || "Custom Topic").trim();
-                      const shouldReset =
-                        !sessionId || (activeTopic ? topic !== activeTopic : false);
-                      void sendMessage(topic, messageInput, shouldReset);
-                    }}
-                    className="absolute bottom-2.5 right-2.5 rounded-lg p-1 text-app-muted transition-colors hover:text-app-accent disabled:opacity-30"
-                  >
-                    {isStreaming ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  disabled={isStreaming || !messageInput.trim()}
+                  onClick={() => {
+                    const topic = (topicDraft || activeTopic || messageInput.trim().slice(0, 60)).trim() || "Custom Topic";
+                    const shouldReset =
+                      !sessionId || (activeTopic ? topic !== activeTopic : false);
+                    void sendMessage(topic, messageInput, shouldReset);
+                  }}
+                  className="absolute bottom-2.5 right-2.5 rounded-lg p-1 text-app-muted transition-colors hover:text-app-accent disabled:opacity-30"
+                >
+                  {isStreaming ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </button>
               </div>
               <p className="mt-1.5 text-[11px] text-app-muted/40">
                 Enter to send · Shift+Enter for new line
