@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Node {
   x: number;
@@ -12,8 +12,24 @@ interface Node {
 
 export function NeuralCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDark, setIsDark] = useState(() =>
+    typeof document !== "undefined"
+      ? !document.documentElement.classList.contains("light")
+      : true
+  );
 
   useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key === "lml-theme") {
+        setIsDark(e.newValue !== "light");
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  useEffect(() => {
+    if (!isDark) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -95,7 +111,9 @@ export function NeuralCanvas() {
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, []);
+  }, [isDark]);
+
+  if (!isDark) return null;
 
   return (
     <canvas

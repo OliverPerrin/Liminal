@@ -3,7 +3,7 @@ import { TOPIC_TAXONOMY } from "@/lib/topics";
 import { getCurrentUser } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
 import { Logo } from "@/components/logo";
-import { NeuralCanvas } from "@/components/neural-canvas";
+import { ThreeHero } from "@/components/three-hero";
 
 const STAGE_CARDS = [
   {
@@ -71,9 +71,8 @@ export default async function AboutPage() {
       ) : (
         <header className="relative z-30 border-b border-app-border bg-app-panel/95 backdrop-blur-sm">
           <div className="mx-auto flex h-11 w-full max-w-5xl items-center justify-between px-6">
-            <div className="flex items-center gap-2 text-[13px] font-bold text-app-fg">
-              <Logo size={22} className="text-app-accent" />
-              LiminalML
+            <div className="flex items-center gap-2">
+              <Logo size={22} />
             </div>
             <Link
               href="/auth"
@@ -86,9 +85,9 @@ export default async function AboutPage() {
       )}
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section className="relative min-h-[540px] overflow-hidden">
-        {/* Neural network background */}
-        <NeuralCanvas />
+      <section className="relative min-h-[620px] overflow-hidden">
+        {/* 3D neural network background */}
+        <ThreeHero />
         {/* Radial gradient overlay for text legibility */}
         <div
           className="absolute inset-0"
@@ -405,9 +404,8 @@ export default async function AboutPage() {
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <footer className="border-t border-app-border bg-app-panel">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-2 text-[12px] font-semibold text-app-muted">
-            <Logo size={18} className="text-app-accent" />
-            LiminalML
+          <div className="flex items-center gap-2">
+            <Logo size={18} />
           </div>
           <p className="text-[12px] text-app-muted/50">
             Powered by Claude Sonnet · Supabase · Next.js

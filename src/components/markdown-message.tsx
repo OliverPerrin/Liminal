@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -8,6 +8,7 @@ import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { DiagramRenderer } from "@/components/diagram-renderer";
 
 type MarkdownMessageProps = {
   content: string;
@@ -167,223 +168,6 @@ function normalizeAssistantContent(raw: string): string {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Mermaid helpers                                                            */
-/* -------------------------------------------------------------------------- */
-
-function sanitizeMermaidCode(input: string): string {
-  let code = input;
-
-  const diagramStart = code.search(
-    /(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|gantt|pie|erDiagram)\s/i,
-  );
-  if (diagramStart >= 0) {
-    code = code.slice(diagramStart);
-  }
-
-  // Quote bare node labels. The inner group matches either:
-  //   • an already-quoted string: "..." (may contain [ ] inside)
-  //   • an unquoted label: anything up to the closing ]
-  // This prevents the regex from splitting on ] inside quoted labels like ["Query [B T D]"].
-  code = code.replace(
-    /([A-Za-z][A-Za-z0-9_]*)\[("(?:[^"\\]|\\.)*"|[^\]\n]+)\]/g,
-    (_m, id, label) => {
-      if (label.startsWith('"')) return `${id}[${label}]`; // already quoted, leave as-is
-      const safe = label.replace(/"/g, "").trim();
-      return `${id}["${safe}"]`;
-    },
-  );
-
-  // Inside quoted labels:
-  //   1. Convert [brackets] → (parens). Mermaid's lexer treats [ ] as node-shape
-  //      delimiters even inside quoted strings, so "Input [B T D]" breaks parsing.
-  //   2. Strip chars that break Mermaid / the HTML label renderer.
-  //      ( ) are kept intentionally — they're our dimension-annotation delimiters now.
-  code = code.replace(/"([^"]+)"/g, (_m, label: string) => {
-    let safe = label;
-    safe = safe.replace(/\[([^\]]*)\]/g, "($1)"); // [B T D] → (B T D)
-    safe = safe.replace(/[{}#&\\$<>]/g, " ");      // strip chars that break Mermaid/HTML
-    safe = safe.replace(/\s+/g, " ").trim();
-    return `"${safe}"`;
-  });
-
-  // Clean edge labels.
-  code = code.replace(/\|([^|]+)\|/g, (_m, label: string) => {
-    let safe = label;
-    safe = safe.replace(/[{}#&\\"$<>()]/g, " ");
-    safe = safe.replace(/\s+/g, " ").trim();
-    return `|${safe}|`;
-  });
-
-  // Normalize unicode subscripts.
-  const subMap: Record<string, string> = {
-    "₀": "0","₁": "1","₂": "2","₃": "3","₄": "4",
-    "₅": "5","₆": "6","₇": "7","₈": "8","₉": "9",
-  };
-  code = code.replace(/[₀₁₂₃₄₅₆₇₈₉]/g, (c) => subMap[c] ?? c);
-
-  // Normalize curly quotes.
-  code = code.replace(/[\u201C\u201D]/g, '"');
-  code = code.replace(/[\u2018\u2019]/g, "'");
-
-  // Remove trailing periods.
-  code = code.replace(/\.+$/gm, "");
-
-  // Remove ::: class assignments.
-  code = code.replace(/:::\w+/g, "");
-
-  return code;
-}
-
-function simplifyMermaidCode(code: string): string {
-  let s = code;
-  s = s.replace(/^\s*subgraph\s+.*$/gm, "");
-  s = s.replace(/^\s*end\s*$/gm, "");
-  s = s.replace(/^\s*(style|classDef|class|linkStyle|click)\s+.*$/gm, "");
-  s = s.replace(/<[^>]+>/g, "");
-  s = s.replace(/"([^"]{35,})"/g, (_m, label: string) => `"${label.substring(0, 30)}"`);
-  s = s.split("\n").filter((l) => l.trim() !== "").join("\n");
-  return s;
-}
-
-function cleanupMermaidArtifacts(idPrefix: string) {
-  if (typeof document === "undefined") return;
-  document
-    .querySelectorAll(`[id^="d${idPrefix}"], [id^="${idPrefix}"]`)
-    .forEach((el) => el.remove());
-  const body = document.body;
-  for (let i = body.childNodes.length - 1; i >= 0; i--) {
-    const node = body.childNodes[i];
-    if (
-      node.nodeType === Node.TEXT_NODE &&
-      node.textContent &&
-      /Syntax error in text|mermaid version/i.test(node.textContent)
-    ) {
-      node.remove();
-    }
-    if (
-      node instanceof HTMLElement &&
-      (node.id.startsWith("d") || node.id.startsWith("mermaid")) &&
-      node.style.position === "absolute"
-    ) {
-      node.remove();
-    }
-  }
-}
-
-let mermaidCounter = 0;
-
-const MERMAID_INIT = {
-  startOnLoad: false,
-  theme: "base" as const,
-  themeVariables: {
-    background: "#111119",
-    primaryColor: "#1b1b26",
-    primaryTextColor: "#f0f0f8",
-    primaryBorderColor: "#252535",
-    lineColor: "#10b981",
-    secondaryColor: "#111119",
-    tertiaryColor: "#09090f",
-    fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif",
-    fontSize: "13px",
-    edgeLabelBackground: "#1b1b26",
-    clusterBkg: "#1b1b26",
-    clusterBorder: "#252535",
-  },
-  securityLevel: "loose" as const,
-  flowchart: { curve: "basis" as const, htmlLabels: true, padding: 20 },
-};
-
-function makeResponsiveSvg(svg: string): string {
-  let s = svg;
-  s = s.replace(/(<svg[^>]*?)\s+height="[^"]*"/i, "$1");
-  s = s.replace(/(<svg[^>]*?)\s+width="[^"]*"/i, '$1 width="100%"');
-  return s;
-}
-
-function MermaidDiagram({ code }: { code: string }) {
-  const [svg, setSvg] = useState<string>("");
-  const [failed, setFailed] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const idPrefix = useRef(`mmd-${++mermaidCounter}`).current;
-
-  useEffect(() => {
-    let mounted = true;
-
-    const timer = setTimeout(async () => {
-      if (!mounted) return;
-
-      const offscreen = document.createElement("div");
-      offscreen.style.cssText =
-        "position:absolute;left:-9999px;top:-9999px;width:1200px;height:1px;overflow:hidden;";
-      document.body.appendChild(offscreen);
-
-      try {
-        const mermaid = (await import("mermaid")).default;
-        mermaid.initialize(MERMAID_INIT);
-
-        const sanitized = sanitizeMermaidCode(code);
-
-        try {
-          const id1 = `${idPrefix}-${Date.now()}`;
-          const r1 = await mermaid.render(id1, sanitized, offscreen);
-          if (!mounted) return;
-          setSvg(makeResponsiveSvg(r1.svg));
-          return;
-        } catch {
-          cleanupMermaidArtifacts(idPrefix);
-          offscreen.innerHTML = "";
-        }
-
-        const simplified = simplifyMermaidCode(sanitized);
-        try {
-          const id2 = `${idPrefix}-r-${Date.now()}`;
-          const r2 = await mermaid.render(id2, simplified, offscreen);
-          if (!mounted) return;
-          setSvg(makeResponsiveSvg(r2.svg));
-          return;
-        } catch {
-          cleanupMermaidArtifacts(idPrefix);
-        }
-
-        if (mounted) setFailed(true);
-      } catch {
-        if (mounted) setFailed(true);
-      } finally {
-        offscreen.remove();
-        cleanupMermaidArtifacts(idPrefix);
-        if (mounted) setLoading(false);
-      }
-    }, 400);
-
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-      cleanupMermaidArtifacts(idPrefix);
-    };
-  }, [code, idPrefix]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2.5 rounded-lg border border-app-border bg-[#111119] p-6 text-sm text-app-muted">
-        <div className="h-4 w-4 animate-spin rounded-full border-2 border-app-border border-t-app-accent" />
-        Rendering diagram…
-      </div>
-    );
-  }
-
-  if (failed) {
-    return <CodeBlock language="mermaid" code={code} />;
-  }
-
-  return (
-    <div
-      className="not-prose mermaid-container overflow-x-auto rounded-lg border border-app-border bg-[#111119] p-5"
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
-  );
-}
-
-/* -------------------------------------------------------------------------- */
 /*  Code block                                                                 */
 /* -------------------------------------------------------------------------- */
 
@@ -413,7 +197,7 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
         </button>
       </div>
       <SyntaxHighlighter
-        language={language === "mermaid" ? "text" : language}
+        language={language}
         style={oneDark}
         customStyle={{
           margin: 0,
@@ -548,8 +332,8 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
               );
             }
 
-            if (language === "mermaid") {
-              return <MermaidDiagram code={code} />;
+            if (language === "diagram") {
+              return <DiagramRenderer code={code} />;
             }
 
             return <CodeBlock language={language || "text"} code={code} />;

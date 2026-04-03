@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { NeuralCanvas } from "@/components/neural-canvas";
+import { Logo } from "@/components/logo";
 
 export function AuthView() {
   const router = useRouter();
@@ -81,10 +82,7 @@ export function AuthView() {
         href="/about"
         className="relative z-10 mb-8 flex items-center gap-2.5 text-app-fg/80 transition-opacity hover:opacity-80"
       >
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-app-accent text-[11px] font-black text-white">
-          LM
-        </div>
-        <span className="text-[15px] font-bold tracking-tight">LiminalML</span>
+        <Logo size={22} />
       </Link>
 
       <section className="relative z-10 w-full max-w-sm rounded-2xl border border-app-border bg-app-panel/80 p-7 shadow-2xl shadow-black/40 backdrop-blur-md">

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/home", label: "Study" },
+  { href: "/practice", label: "Practice" },
   { href: "/profile", label: "Profile" },
   { href: "/about", label: "About" },
 ];
@@ -51,7 +52,6 @@ export function AppHeader({ studiedCount }: AppHeaderProps) {
           className="flex items-center gap-2 text-[13px] font-bold tracking-tight text-app-accent transition-opacity hover:opacity-80"
         >
           <Logo size={22} />
-          <span className="hidden sm:inline text-app-fg">LiminalML</span>
         </Link>
 
         {/* Nav */}

@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
+  Code,
   Loader2,
   PanelRightClose,
   PanelRightOpen,
@@ -15,6 +16,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
+import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -270,6 +272,7 @@ export function HomeView({ userId }: HomeViewProps) {
   const [mastery, setMastery] = useState<Record<string, TopicMastery>>({});
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const animatedKeys = useRef<Set<string>>(new Set());
 
   const currentStage = useMemo(() => detectCurrentStage(messages), [messages]);
   const showContinue = useMemo(
@@ -671,12 +674,22 @@ export function HomeView({ userId }: HomeViewProps) {
             {currentStage > 0 && (
               <StageProgressBar currentStage={currentStage} />
             )}
+            {activeTopic && messages.length > 0 && !isStreaming && (
+              <Link
+                href={`/practice?topic=${encodeURIComponent(activeTopic)}${sessionId ? `&session_id=${sessionId}` : ""}`}
+                title="Practice coding for this topic"
+                className="ml-1 flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-medium text-app-muted/70 transition-colors hover:bg-app-panel-2 hover:text-app-fg"
+              >
+                <Code className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Practice</span>
+              </Link>
+            )}
             {messages.length > 0 && !isStreaming && (
               <button
                 type="button"
                 title="New session on same topic"
                 onClick={() => activeTopic && startTopic(activeTopic)}
-                className="ml-1 shrink-0 rounded-md p-1.5 text-app-muted/60 transition-colors hover:bg-app-panel-2 hover:text-app-fg"
+                className="shrink-0 rounded-md p-1.5 text-app-muted/60 transition-colors hover:bg-app-panel-2 hover:text-app-fg"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
               </button>
@@ -696,16 +709,20 @@ export function HomeView({ userId }: HomeViewProps) {
                 <EmptyState onTopicClick={startTopic} />
               ) : (
                 <div className="space-y-6">
-                  {messages.map((message, index) => (
+                  {messages.map((message, index) => {
+                    const msgKey = `${message.createdAt}-${index}`;
+                    const isNew = !animatedKeys.current.has(msgKey);
+                    if (isNew) animatedKeys.current.add(msgKey);
+                    return (
                     <div
-                      key={`${message.createdAt}-${index}`}
+                      key={msgKey}
                       className={cn(
-                        "message-enter",
+                        isNew ? "message-enter" : "",
                         message.role === "user" ? "flex justify-end" : "",
                       )}
                     >
                       {message.role === "user" ? (
-                        <div className="max-w-2xl rounded-2xl rounded-br-sm bg-app-panel-2 px-4 py-3 text-[0.9375rem] leading-7 text-app-fg/90 ring-1 ring-app-border">
+                        <div className="max-w-2xl rounded-2xl rounded-br-sm bg-app-panel-2 px-4 py-3 text-[0.9375rem] leading-7 text-app-fg/90 ring-1 ring-app-border shadow-sm">
                           {message.content}
                         </div>
                       ) : (
@@ -714,7 +731,7 @@ export function HomeView({ userId }: HomeViewProps) {
                         </div>
                       )}
                     </div>
-                  ))}
+                  ); })}
                   {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
                     <div className="flex items-center gap-1.5 px-1 py-2">
                       <span className="typing-dot h-1.5 w-1.5 rounded-full bg-app-accent/60" />
@@ -774,7 +791,7 @@ export function HomeView({ userId }: HomeViewProps) {
           {/* Input — shrink-0 so it stays pinned to the bottom */}
           <div className="shrink-0 border-t border-app-border bg-app-panel px-3 py-3 sm:px-4">
             <div className="mx-auto max-w-4xl">
-              <div className="relative">
+              <div className="relative rounded-xl transition-shadow focus-within:shadow-[0_0_0_1px_rgba(16,185,129,0.25)]">
                 <textarea
                   ref={textareaRef}
                   value={messageInput}
