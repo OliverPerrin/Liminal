@@ -209,18 +209,40 @@ export function PracticeView({ userId, topic, sessionId, initialMessages }: Prac
             <p className="text-[12px] font-semibold uppercase tracking-widest text-app-muted/70">
               Session Notes
             </p>
+            {topic && stageNums.length === 0 && (
+              <p className="mt-1 truncate text-[11px] text-app-muted/50" title={topic}>
+                {topic}
+              </p>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
             {stageNums.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <p className="text-[14px] font-medium text-app-fg/70">No session notes yet</p>
-                <p className="mt-2 text-[13px] text-app-muted/60 max-w-[220px]">
-                  Start a study session on this topic, then come back here to practice.
+              <div className="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
+                <div className="mb-2 text-3xl">⌨️</div>
+                <h3 className="text-base font-semibold text-app-fg">
+                  Practice by implementing from scratch
+                </h3>
+                <ul className="space-y-2 text-left text-[13px] text-app-muted">
+                  <li className="flex gap-2">
+                    <span className="text-app-accent">→</span>
+                    Write PyTorch or NumPy code from memory — no peeking at docs
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-app-accent">→</span>
+                    Submit your code and get AI feedback on correctness, style, and edge cases
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-app-accent">→</span>
+                    Use your session notes on the left as hints when you&apos;re stuck
+                  </li>
+                </ul>
+                <p className="text-[12px] text-app-muted/70">
+                  Complete a study session first to unlock session notes for this topic.
                 </p>
                 <Link
                   href="/home"
-                  className="mt-5 rounded-lg bg-app-panel-2 px-4 py-2 text-[13px] font-medium text-app-muted transition-colors hover:text-app-fg"
+                  className="mt-1 rounded-lg bg-app-panel-2 px-4 py-2 text-[13px] font-medium text-app-muted transition-colors hover:text-app-fg"
                 >
                   Go to Study →
                 </Link>

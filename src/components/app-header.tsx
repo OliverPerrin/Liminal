@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Moon, Sun } from "lucide-react";
+import { LogOut, Menu, Moon, Sun, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
@@ -23,11 +23,17 @@ export function AppHeader({ studiedCount }: AppHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isDark, setIsDark] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("lml-theme");
     setIsDark(stored !== "light");
   }, []);
+
+  // Close menu on route change
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
   function toggleTheme() {
     const next = isDark ? "light" : "dark";
@@ -54,8 +60,8 @@ export function AppHeader({ studiedCount }: AppHeaderProps) {
           <Logo size={22} />
         </Link>
 
-        {/* Nav */}
-        <nav className="flex items-center gap-0.5 text-sm">
+        {/* Desktop Nav */}
+        <nav className="hidden items-center gap-0.5 text-sm md:flex">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -64,8 +70,9 @@ export function AppHeader({ studiedCount }: AppHeaderProps) {
                 "rounded-md px-3 py-1.5 text-[13px] transition-colors",
                 pathname === link.href
                   ? "bg-app-accent/10 text-app-accent"
-                  : "text-app-muted hover:bg-app-panel-2 hover:text-app-fg",
+                  : "text-[#b0b0b0] hover:bg-app-panel-2 hover:text-app-fg",
               )}
+              style={pathname === link.href ? undefined : { color: "var(--nav-inactive, #b0b0b0)" }}
             >
               {link.label}
             </Link>
@@ -101,7 +108,58 @@ export function AppHeader({ studiedCount }: AppHeaderProps) {
             <span className="hidden sm:inline">Sign out</span>
           </button>
         </nav>
+
+        {/* Mobile controls */}
+        <div className="flex items-center gap-1 md:hidden">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            className="rounded-md p-1.5 text-app-muted/60 transition-colors hover:bg-app-panel-2 hover:text-app-fg"
+          >
+            {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((p) => !p)}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            className="rounded-md p-1.5 text-app-muted/60 transition-colors hover:bg-app-panel-2 hover:text-app-fg"
+          >
+            {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div className="border-t border-app-border bg-app-panel/98 px-4 pb-4 pt-2 md:hidden">
+          <nav className="flex flex-col gap-1">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "rounded-lg px-3 py-2.5 text-[14px] transition-colors",
+                  pathname === link.href
+                    ? "bg-app-accent/10 text-app-accent"
+                    : "text-app-fg/80 hover:bg-app-panel-2",
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <div className="my-1 border-t border-app-border" />
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-[14px] text-app-muted transition-colors hover:bg-app-panel-2 hover:text-app-fg"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

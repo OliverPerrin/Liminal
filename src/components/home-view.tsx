@@ -244,7 +244,7 @@ function EmptyState({ onTopicClick }: { onTopicClick: (t: string) => void }) {
                 className="h-1.5 w-1.5 shrink-0 rounded-full"
                 style={{ background: color }}
               />
-              <span className="truncate text-app-fg/80">{topic}</span>
+              <span className="line-clamp-2 text-[13px] leading-5 text-app-fg/80">{topic}</span>
             </button>
           );
         })}
@@ -596,8 +596,8 @@ export function HomeView({ userId }: HomeViewProps) {
                                   onClick={() => startTopic(topic)}
                                   title={
                                     m
-                                      ? `${m.count} session${m.count !== 1 ? "s" : ""} · last studied ${timeAgo(m.lastStudied)}`
-                                      : undefined
+                                      ? `${topic} · ${m.count} session${m.count !== 1 ? "s" : ""} · last studied ${timeAgo(m.lastStudied)}`
+                                      : topic
                                   }
                                   className={cn(
                                     "group flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[13px] transition-colors",
@@ -805,10 +805,11 @@ export function HomeView({ userId }: HomeViewProps) {
                       : "Type a topic or question to start a session…"
                   }
                   rows={1}
-                  className="w-full resize-none rounded-xl border border-app-border bg-app-bg px-4 py-2.5 pr-10 text-[13px] text-app-fg placeholder:text-app-muted/40 focus:border-app-accent/50 focus:outline-none focus:ring-1 focus:ring-app-accent/20"
+                  className="w-full resize-none rounded-xl border border-app-border bg-app-bg px-4 py-2.5 pr-12 text-[13px] text-app-fg placeholder:text-app-muted/60 focus:border-app-accent/50 focus:outline-none focus:ring-1 focus:ring-app-accent/20"
                 />
                 <button
                   type="button"
+                  aria-label="Send message"
                   disabled={isStreaming || !messageInput.trim()}
                   onClick={() => {
                     const topic = (topicDraft || activeTopic || messageInput.trim().slice(0, 60)).trim() || "Custom Topic";
@@ -816,7 +817,7 @@ export function HomeView({ userId }: HomeViewProps) {
                       !sessionId || (activeTopic ? topic !== activeTopic : false);
                     void sendMessage(topic, messageInput, shouldReset);
                   }}
-                  className="absolute bottom-2.5 right-2.5 rounded-lg p-1 text-app-muted transition-colors hover:text-app-accent disabled:opacity-30"
+                  className="absolute bottom-1.5 right-1.5 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-app-muted transition-colors hover:text-app-accent disabled:opacity-30"
                 >
                   {isStreaming ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

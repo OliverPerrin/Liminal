@@ -264,16 +264,38 @@ export function ProfileView({ userId }: ProfileViewProps) {
         <div className="space-y-5">
           {/* Resume text */}
           <section className="rounded-xl border border-app-border bg-app-panel p-5">
-            <h2 className="mb-3 text-[14px] font-semibold text-app-fg">Resume text</h2>
-            <textarea
-              rows={10}
-              value={resumeText}
-              onChange={(e) => setResumeText(e.target.value)}
-              className="w-full resize-none rounded-lg border border-app-border bg-app-panel-2 px-3 py-2.5 text-[13px] text-app-fg/80 focus:border-app-accent/50 focus:outline-none focus:ring-1 focus:ring-app-accent/20"
-            />
-            <p className="mt-2 text-[11px] text-app-muted/50">
-              {resumeText.split(/\s+/).filter(Boolean).length} words
-            </p>
+            <details>
+              <summary className="flex cursor-pointer list-none items-center justify-between">
+                <div>
+                  <h2 className="text-[14px] font-semibold text-app-fg">Resume text</h2>
+                  <p className="mt-0.5 text-[12px] text-app-muted/60">
+                    {resumeText
+                      ? `${resumeText.split(/\s+/).filter(Boolean).length} words · click to expand`
+                      : "No resume uploaded · click to add"}
+                  </p>
+                </div>
+                <svg
+                  className="h-4 w-4 shrink-0 text-app-muted/60 transition-transform details-chevron"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <div className="mt-3">
+                <textarea
+                  rows={10}
+                  value={resumeText}
+                  onChange={(e) => setResumeText(e.target.value)}
+                  className="w-full resize-none rounded-lg border border-app-border bg-app-panel-2 px-3 py-2.5 text-[13px] text-app-fg/80 focus:border-app-accent/50 focus:outline-none focus:ring-1 focus:ring-app-accent/20"
+                />
+                <p className="mt-2 text-[11px] text-app-muted/50">
+                  Used only for AI session personalization. Never shared.
+                </p>
+              </div>
+            </details>
           </section>
 
           {/* STAR stories */}

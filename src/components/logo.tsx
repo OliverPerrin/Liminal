@@ -17,7 +17,7 @@ export function Logo({ size = 22, className }: LogoProps) {
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
           backgroundClip: "text",
-          letterSpacing: "-0.02em",
+          letterSpacing: "0.01em",
           fontSize: size ? `${size * 1.1}px` : undefined,
           lineHeight: 1,
         }}
@@ -27,9 +27,10 @@ export function Logo({ size = 22, className }: LogoProps) {
       <span
         style={{
           fontFamily: "var(--font-geist-mono)",
-          fontSize: size ? `${size * 0.72}px` : undefined,
-          color: "var(--muted)",
-          letterSpacing: "0.04em",
+          fontSize: size ? `${Math.round(size * 0.82)}px` : undefined,
+          color: "var(--logo-ml-color, var(--muted))",
+          letterSpacing: "0.01em",
+          fontWeight: 600,
           marginLeft: "3px",
           lineHeight: 1,
         }}

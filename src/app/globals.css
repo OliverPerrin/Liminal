@@ -7,8 +7,18 @@
   --panel: #111119;
   --panel-2: #1b1b26;
   --border: #252535;
-  --muted: #7878a0;
+  --muted: #9ca3af;
   --accent: #10b981;
+
+  /* Hero overlays */
+  --hero-overlay-rgb: 9, 9, 15;
+
+  /* Logo ML span */
+  --logo-ml-color: #c8cad0;
+
+  /* Card hover */
+  --card-hover-border: #3d3e5a;
+  --card-hover-shadow: 0 0 20px rgba(0,0,0,0.3);
 
   /* Code surfaces — stay dark in both themes */
   --code-bg: #0c0d11;
@@ -38,6 +48,16 @@ html.light {
   --border: #e5e7eb;
   --muted: #6b7280;
   --accent: #059669;
+
+  /* Hero overlays */
+  --hero-overlay-rgb: 249, 250, 251;
+
+  /* Logo ML span */
+  --logo-ml-color: #4b5563;
+
+  /* Card hover */
+  --card-hover-border: #d1d5db;
+  --card-hover-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 @theme inline {
@@ -162,4 +182,19 @@ body {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Details/summary chevron ────────────────────────────────────────────── */
+details[open] .details-chevron {
+  transform: rotate(180deg);
+}
+
+/* ─── Reduced motion: ensure nothing stays invisible ─────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
