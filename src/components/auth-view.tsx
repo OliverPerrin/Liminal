@@ -73,7 +73,7 @@ export function AuthView() {
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(9,9,15,0.88) 0%, rgba(9,9,15,0.6) 70%, transparent 100%)",
+            "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(var(--hero-overlay-rgb),0.88) 0%, rgba(var(--hero-overlay-rgb),0.6) 70%, transparent 100%)",
         }}
       />
 
