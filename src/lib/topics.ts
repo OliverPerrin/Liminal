@@ -1,3 +1,5 @@
+export type TrackId = "ml" | "swe";
+
 export type TopicDomain = {
   name: string;
   sections: Array<{
@@ -6,7 +8,7 @@ export type TopicDomain = {
   }>;
 };
 
-export const TOPIC_TAXONOMY: TopicDomain[] = [
+export const ML_TAXONOMY: TopicDomain[] = [
   {
     name: "Classical ML",
     sections: [
@@ -155,6 +157,236 @@ export const TOPIC_TAXONOMY: TopicDomain[] = [
   },
 ];
 
-export const ALL_TOPICS = TOPIC_TAXONOMY.flatMap((domain) =>
-  domain.sections.flatMap((section) => section.topics),
+export const SWE_TAXONOMY: TopicDomain[] = [
+  {
+    name: "Frontend",
+    sections: [
+      {
+        title: "Core Web",
+        topics: [
+          "HTML Semantics and Document Structure",
+          "CSS Layout (Flexbox, Grid, Positioning)",
+          "Modern JavaScript (ES2020+, Closures, Prototypes)",
+          "Event Loop, Microtasks and Macrotasks",
+          "DOM, Reflow and Repaint",
+          "Browser Rendering Pipeline and Critical Path",
+          "HTTP, CORS, Cookies and Fetch",
+        ],
+      },
+      {
+        title: "Frameworks and State",
+        topics: [
+          "React Rendering Model and Reconciliation",
+          "Hooks, Effects and Derived State",
+          "Client vs Server Components (Next.js App Router)",
+          "State Management (Context, Redux, Zustand, TanStack Query)",
+          "Routing, Data Fetching and Streaming",
+          "Forms, Validation and Server Actions",
+        ],
+      },
+      {
+        title: "Performance and Quality",
+        topics: [
+          "Core Web Vitals (LCP, INP, CLS)",
+          "Bundle Splitting and Lazy Loading",
+          "Image and Font Optimization",
+          "Accessibility (WCAG, ARIA, Keyboard, Screen Readers)",
+          "Frontend Testing (Unit, Component, E2E)",
+          "Progressive Enhancement and Offline (Service Workers)",
+        ],
+      },
+    ],
+  },
+  {
+    name: "Backend",
+    sections: [
+      {
+        title: "APIs and Services",
+        topics: [
+          "REST API Design and Versioning",
+          "GraphQL (Schema, Resolvers, N+1)",
+          "gRPC and Protocol Buffers",
+          "WebSockets and Server-Sent Events",
+          "Authentication (Sessions, JWT, OAuth2, OIDC)",
+          "Authorization (RBAC, ABAC, Policies)",
+          "Rate Limiting and Quota Enforcement",
+        ],
+      },
+      {
+        title: "Data and Storage",
+        topics: [
+          "SQL Fundamentals (Joins, Indexes, Query Plans)",
+          "Transactions and Isolation Levels",
+          "NoSQL Models (Document, Key-Value, Wide-Column)",
+          "ORMs vs Query Builders vs Raw SQL",
+          "Caching Strategies (Read-through, Write-through, Write-behind)",
+          "Full-Text Search and Inverted Indexes",
+        ],
+      },
+      {
+        title: "Runtime and Reliability",
+        topics: [
+          "Concurrency Models (Threads, Async/Await, Actors)",
+          "Message Queues and Pub/Sub (Kafka, RabbitMQ, SQS)",
+          "Idempotency and Retries",
+          "Observability (Logs, Metrics, Traces, SLOs)",
+          "Error Handling and Circuit Breakers",
+          "Backpressure and Load Shedding",
+        ],
+      },
+    ],
+  },
+  {
+    name: "System Design",
+    sections: [
+      {
+        title: "Scale and Availability",
+        topics: [
+          "Load Balancing (L4, L7, Consistent Hashing)",
+          "Horizontal vs Vertical Scaling",
+          "Replication (Primary-Replica, Multi-Primary)",
+          "Sharding and Partitioning",
+          "CAP Theorem and PACELC",
+          "Consistency Models (Strong, Eventual, Causal)",
+          "CDNs and Edge Caching",
+        ],
+      },
+      {
+        title: "Patterns",
+        topics: [
+          "Microservices vs Modular Monolith",
+          "Event-Driven Architecture",
+          "CQRS and Event Sourcing",
+          "Saga Pattern for Distributed Transactions",
+          "API Gateway and Service Mesh",
+          "Batch vs Streaming Processing",
+        ],
+      },
+      {
+        title: "Classic Interview Problems",
+        topics: [
+          "Design a URL Shortener (bit.ly)",
+          "Design a Rate Limiter",
+          "Design a News Feed (Twitter/Meta)",
+          "Design a Chat System (WhatsApp/Slack)",
+          "Design a Ride-Sharing Dispatch (Uber)",
+          "Design a Video Streaming Service (YouTube/Netflix)",
+          "Design a Distributed Key-Value Store",
+          "Design a Web Crawler",
+        ],
+      },
+    ],
+  },
+  {
+    name: "UI / UX",
+    sections: [
+      {
+        title: "Design Foundations",
+        topics: [
+          "Design Systems and Token Architecture",
+          "Typography and Type Scales",
+          "Color Theory and Contrast (WCAG)",
+          "Spacing, Rhythm and Grid Systems",
+          "Iconography and Visual Hierarchy",
+          "Dark Mode and Theming Strategy",
+        ],
+      },
+      {
+        title: "Interaction and Research",
+        topics: [
+          "Information Architecture",
+          "Interaction Patterns and Heuristics (Nielsen)",
+          "Microcopy and Empty States",
+          "Motion Design and Easing Curves",
+          "Usability Testing and Research Methods",
+          "Accessibility-First Design Reviews",
+        ],
+      },
+    ],
+  },
+  {
+    name: "CS Fundamentals",
+    sections: [
+      {
+        title: "Data Structures and Algorithms",
+        topics: [
+          "Arrays, Strings and Two Pointers",
+          "Hash Maps and Sets",
+          "Linked Lists",
+          "Stacks and Queues",
+          "Trees, BSTs and Heaps",
+          "Graphs (BFS, DFS, Dijkstra, Topological Sort)",
+          "Dynamic Programming",
+          "Greedy Algorithms",
+          "Big-O and Amortized Analysis",
+        ],
+      },
+      {
+        title: "Systems Basics",
+        topics: [
+          "Operating Systems (Processes, Threads, Scheduling)",
+          "Memory Management (Stack, Heap, GC)",
+          "File Systems and I/O",
+          "TCP/IP, DNS and TLS",
+          "Concurrency Primitives (Locks, Atomics, Channels)",
+          "Unix Tooling and the Command Line",
+        ],
+      },
+    ],
+  },
+];
+
+/**
+ * Combined legacy export so older call sites that iterate all topics
+ * (e.g. `ALL_TOPICS.includes(x)`) continue to work.
+ */
+export const TOPIC_TAXONOMY: TopicDomain[] = ML_TAXONOMY;
+
+export const ALL_ML_TOPICS = ML_TAXONOMY.flatMap((d) =>
+  d.sections.flatMap((s) => s.topics),
 );
+
+export const ALL_SWE_TOPICS = SWE_TAXONOMY.flatMap((d) =>
+  d.sections.flatMap((s) => s.topics),
+);
+
+export const ALL_TOPICS = [...ALL_ML_TOPICS, ...ALL_SWE_TOPICS];
+
+export function getTaxonomy(track: TrackId): TopicDomain[] {
+  return track === "swe" ? SWE_TAXONOMY : ML_TAXONOMY;
+}
+
+export function countTopics(taxonomy: TopicDomain[]): number {
+  return taxonomy.flatMap((d) => d.sections.flatMap((s) => s.topics)).length;
+}
+
+/**
+ * Infer which track a topic belongs to by looking it up in the taxonomies.
+ * Returns `null` for custom user-typed topics; callers can default to "ml".
+ */
+export function getTrackForTopic(topic: string): TrackId | null {
+  if (ALL_ML_TOPICS.includes(topic)) return "ml";
+  if (ALL_SWE_TOPICS.includes(topic)) return "swe";
+  return null;
+}
+
+export function getDomainForTopic(topic: string): {
+  track: TrackId;
+  domain: string;
+} | null {
+  for (const domain of ML_TAXONOMY) {
+    for (const section of domain.sections) {
+      if (section.topics.includes(topic)) {
+        return { track: "ml", domain: domain.name };
+      }
+    }
+  }
+  for (const domain of SWE_TAXONOMY) {
+    for (const section of domain.sections) {
+      if (section.topics.includes(topic)) {
+        return { track: "swe", domain: domain.name };
+      }
+    }
+  }
+  return null;
+}

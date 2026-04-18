@@ -51,6 +51,7 @@ export function TestimonialsSection() {
             >
               <div className="mb-4 flex items-center gap-3">
                 <div
+                  aria-label={`${t.name} avatar`}
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[13px] font-bold text-app-accent"
                   style={{ background: "rgba(16,185,129,0.12)" }}
                 >

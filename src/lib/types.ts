@@ -30,6 +30,7 @@ export type SessionRecord = {
   id: string;
   user_id: string;
   topic: string;
+  track?: "ml" | "swe";
   messages: SessionMessage[];
   created_at: string;
 };

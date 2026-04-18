@@ -11,6 +11,7 @@ const DEFAULT_ANTHROPIC_VERSION = "2023-06-01";
 
 const requestSchema = z.object({
   topic: z.string().min(1),
+  track: z.enum(["ml", "swe"]).optional(),
   user_id: z.string().uuid(),
   session_id: z.string().uuid().nullable().optional(),
   messages: z.array(
@@ -154,10 +155,13 @@ export async function POST(request: Request) {
       .eq("user_id", userId)
       .single<ProfileRecord>();
 
+    const track = requestData.track ?? "ml";
+
     const systemPrompt = buildSystemPrompt({
       resumeText: profile?.resume_text ?? "",
       starStories: profile?.star_stories ?? [],
       extraContext: profile?.extra_context ?? "",
+      track,
     });
 
     let activeSessionId = requestData.session_id;
@@ -167,6 +171,7 @@ export async function POST(request: Request) {
         .insert({
           user_id: userId,
           topic: requestData.topic,
+          track,
           messages: requestData.messages,
         })
         .select("id")

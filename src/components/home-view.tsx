@@ -20,7 +20,15 @@ import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { TOPIC_TAXONOMY } from "@/lib/topics";
+import {
+  getDomainForTopic as lookupDomainForTopic,
+  getTaxonomy,
+  getTrackForTopic,
+  type TopicDomain,
+  type TrackId,
+} from "@/lib/topics";
+import { getStages } from "@/lib/stages";
+import { DOMAIN_COLORS, TRACKS, TRACK_ORDER } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 import type { SessionMessage, SessionRecord } from "@/lib/types";
 
@@ -32,19 +40,6 @@ type TopicMastery = {
   lastStudied: string;
   count: number;
 };
-
-/* -------------------------------------------------------------------------- */
-/*  Stage configuration                                                        */
-/* -------------------------------------------------------------------------- */
-
-const STAGE_CONFIG = [
-  { n: 1, short: "Overview",    label: "Big Picture",          color: "#f59e0b" },
-  { n: 2, short: "Intuition",   label: "Intuition + Visual",   color: "#2dd4bf" },
-  { n: 3, short: "Math",        label: "The Math",             color: "#818cf8" },
-  { n: 4, short: "Code",        label: "Implementation",       color: "#38bdf8" },
-  { n: 5, short: "Questions",   label: "Interview Questions",  color: "#fb923c" },
-  { n: 6, short: "Retrieval",   label: "Retrieval Check",      color: "#c084fc" },
-];
 
 /* -------------------------------------------------------------------------- */
 /*  Helpers                                                                    */
@@ -86,39 +81,31 @@ function timeAgo(iso: string): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
-function getDomainForTopic(topic: string): string | null {
-  for (const domain of TOPIC_TAXONOMY) {
-    for (const section of domain.sections) {
-      if (section.topics.includes(topic)) return domain.name;
-    }
-  }
-  return null;
+function getDomainName(topic: string): string | null {
+  return lookupDomainForTopic(topic)?.domain ?? null;
 }
-
-const DOMAIN_COLORS: Record<string, string> = {
-  "Classical ML": "#f59e0b",
-  "Deep Learning": "#818cf8",
-  "Reinforcement Learning": "#34d399",
-  "Training Engineering": "#38bdf8",
-  "Systems and MLOps": "#fb923c",
-};
 
 /* -------------------------------------------------------------------------- */
 /*  Stage progress bar                                                         */
 /* -------------------------------------------------------------------------- */
 
-function StageProgressBar({ currentStage }: { currentStage: number }) {
+function StageProgressBar({
+  currentStage,
+  stages,
+}: {
+  currentStage: number;
+  stages: ReturnType<typeof getStages>;
+}) {
   return (
     <div className="flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-      {STAGE_CONFIG.map((stage, i) => {
+      {stages.map((stage, i) => {
         const isDone = stage.n < currentStage;
         const isCurrent = stage.n === currentStage;
-        const isFuture = stage.n > currentStage;
 
         return (
           <div key={stage.n} className="flex items-center gap-1">
             <div
-              title={`Stage ${stage.n}: ${stage.label}`}
+              title={`Stage ${stage.n}: ${stage.title}`}
               className="flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all duration-200"
               style={
                 isCurrent
@@ -184,14 +171,34 @@ function StageProgressBar({ currentStage }: { currentStage: number }) {
 /*  Empty state                                                                */
 /* -------------------------------------------------------------------------- */
 
-function EmptyState({ onTopicClick }: { onTopicClick: (t: string) => void }) {
-  const suggestions = [
+const SUGGESTIONS_BY_TRACK: Record<TrackId, string[]> = {
+  ml: [
     "Attention Mechanisms (scaled dot-product, multi-head, cross-attention, FlashAttention)",
     "Transformers (encoder, decoder, encoder-decoder)",
     "PPO (Proximal Policy Optimization)",
     "Backpropagation and Computational Graphs",
     "LoRA and PEFT",
-  ];
+  ],
+  swe: [
+    "Design a Rate Limiter",
+    "React Rendering Model and Reconciliation",
+    "SQL Fundamentals (Joins, Indexes, Query Plans)",
+    "Caching Strategies (Read-through, Write-through, Write-behind)",
+    "Graphs (BFS, DFS, Dijkstra, Topological Sort)",
+  ],
+};
+
+function EmptyState({
+  onTopicClick,
+  track,
+  stages,
+}: {
+  onTopicClick: (t: string) => void;
+  track: TrackId;
+  stages: ReturnType<typeof getStages>;
+}) {
+  const suggestions = SUGGESTIONS_BY_TRACK[track];
+  const trackLabel = track === "swe" ? "any SWE topic" : "any ML topic";
 
   return (
     <div className="flex flex-col items-center justify-center px-4 py-16 text-center" style={{ animation: "fadeIn 0.4s ease" }}>
@@ -200,12 +207,12 @@ function EmptyState({ onTopicClick }: { onTopicClick: (t: string) => void }) {
       </div>
       <h2 className="mb-2 text-lg font-semibold text-app-fg">Start a session</h2>
       <p className="mb-8 max-w-sm text-sm leading-6 text-app-muted">
-        Pick a topic from the sidebar for a structured 6-stage session, or type any ML topic below.
+        Pick a topic from the sidebar for a structured 6-stage session, or type {trackLabel} below.
       </p>
 
       {/* Stage preview pills */}
       <div className="mb-8 flex flex-wrap justify-center gap-2">
-        {STAGE_CONFIG.map((stage) => (
+        {stages.map((stage) => (
           <div
             key={stage.n}
             className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium"
@@ -231,8 +238,8 @@ function EmptyState({ onTopicClick }: { onTopicClick: (t: string) => void }) {
           Popular topics
         </p>
         {suggestions.map((topic) => {
-          const domain = getDomainForTopic(topic);
-          const color = domain ? DOMAIN_COLORS[domain] : "#10b981";
+          const domain = getDomainName(topic);
+          const color = domain ? DOMAIN_COLORS[domain] ?? "#10b981" : "#10b981";
           return (
             <button
               key={topic}
@@ -262,6 +269,8 @@ export function HomeView({ userId }: HomeViewProps) {
   const [topicDraft, setTopicDraft] = useState("");
   const [messageInput, setMessageInput] = useState("");
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
+  const [activeTrack, setActiveTrack] = useState<TrackId>("ml");
+  const [sidebarTrack, setSidebarTrack] = useState<TrackId>("ml");
   const [messages, setMessages] = useState<SessionMessage[]>([]);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -273,6 +282,12 @@ export function HomeView({ userId }: HomeViewProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const animatedKeys = useRef<Set<string>>(new Set());
+
+  const activeStages = useMemo(() => getStages(activeTrack), [activeTrack]);
+  const sidebarTaxonomy: TopicDomain[] = useMemo(
+    () => getTaxonomy(sidebarTrack),
+    [sidebarTrack],
+  );
 
   const currentStage = useMemo(() => detectCurrentStage(messages), [messages]);
   const showContinue = useMemo(
@@ -318,21 +333,21 @@ export function HomeView({ userId }: HomeViewProps) {
     el.style.height = `${Math.min(el.scrollHeight, 150)}px`;
   }, [messageInput]);
 
-  // Expand all domains initially
+  // Expand all domains initially (re-expand when the track changes)
   useEffect(() => {
-    setExpandedDomains(
-      TOPIC_TAXONOMY.reduce<Record<string, boolean>>((acc, d) => {
-        acc[d.name] = true;
+    setExpandedDomains((prev) =>
+      sidebarTaxonomy.reduce<Record<string, boolean>>((acc, d) => {
+        acc[d.name] = prev[d.name] ?? true;
         return acc;
       }, {}),
     );
-  }, []);
+  }, [sidebarTaxonomy]);
 
   const loadSessions = useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
     const { data } = await supabase
       .from("sessions")
-      .select("id,user_id,topic,messages,created_at")
+      .select("id,user_id,topic,track,messages,created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -345,18 +360,20 @@ export function HomeView({ userId }: HomeViewProps) {
   }, [loadSessions]);
 
   const filteredDomains = useMemo(() => {
-    if (!query.trim()) return TOPIC_TAXONOMY;
+    if (!query.trim()) return sidebarTaxonomy;
     const normalized = query.toLowerCase();
-    return TOPIC_TAXONOMY.map((domain) => ({
-      ...domain,
-      sections: domain.sections
-        .map((section) => ({
-          ...section,
-          topics: section.topics.filter((t) => t.toLowerCase().includes(normalized)),
-        }))
-        .filter((s) => s.topics.length > 0),
-    })).filter((d) => d.sections.length > 0);
-  }, [query]);
+    return sidebarTaxonomy
+      .map((domain) => ({
+        ...domain,
+        sections: domain.sections
+          .map((section) => ({
+            ...section,
+            topics: section.topics.filter((t) => t.toLowerCase().includes(normalized)),
+          }))
+          .filter((s) => s.topics.length > 0),
+      }))
+      .filter((d) => d.sections.length > 0);
+  }, [query, sidebarTaxonomy]);
 
   async function streamSession(
     topic: string,
@@ -378,6 +395,7 @@ export function HomeView({ userId }: HomeViewProps) {
       },
       body: JSON.stringify({
         topic,
+        track: activeTrack,
         user_id: userId,
         session_id: existingSessionId ?? sessionId ?? undefined,
         messages: nextMessages,
@@ -466,6 +484,8 @@ export function HomeView({ userId }: HomeViewProps) {
 
   function startTopic(topic: string) {
     setTopicDraft(topic);
+    const inferredTrack = getTrackForTopic(topic) ?? sidebarTrack;
+    setActiveTrack(inferredTrack);
     void sendMessage(topic, `Start a structured session on: ${topic}`, true);
   }
 
@@ -488,6 +508,9 @@ export function HomeView({ userId }: HomeViewProps) {
     setActiveTopic(record.topic);
     setTopicDraft(record.topic);
     setMessages((record.messages as SessionMessage[]) || []);
+    const resolvedTrack = record.track ?? getTrackForTopic(record.topic) ?? "ml";
+    setActiveTrack(resolvedTrack);
+    setSidebarTrack(resolvedTrack);
   }
 
   async function deleteSession(record: SessionRecord) {
@@ -523,7 +546,7 @@ export function HomeView({ userId }: HomeViewProps) {
 
   const studiedTopicsCount = Object.keys(mastery).length;
   const domainAccentColor = activeTopic
-    ? (DOMAIN_COLORS[getDomainForTopic(activeTopic) ?? ""] ?? "#10b981")
+    ? (DOMAIN_COLORS[getDomainName(activeTopic) ?? ""] ?? "#10b981")
     : "#10b981";
 
   return (
@@ -535,7 +558,35 @@ export function HomeView({ userId }: HomeViewProps) {
 
         {/* ── Topic Browser ─────────────────────────────────────────────────── */}
         <aside className="hidden w-[280px] shrink-0 flex-col border-r border-app-border bg-app-panel lg:flex">
-          <div className="shrink-0 border-b border-app-border p-3">
+          <div className="shrink-0 border-b border-app-border p-3 space-y-2.5">
+            <div
+              role="tablist"
+              aria-label="Track"
+              className="flex gap-1 rounded-lg border border-app-border bg-app-bg p-0.5"
+            >
+              {TRACK_ORDER.map((id) => {
+                const meta = TRACKS[id];
+                const isActive = sidebarTrack === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setSidebarTrack(id)}
+                    className={cn(
+                      "flex-1 rounded-md px-2 py-1.5 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/40",
+                      isActive
+                        ? "bg-app-panel-2 text-app-fg shadow-sm"
+                        : "text-app-muted hover:text-app-fg",
+                    )}
+                    title={meta.tagline}
+                  >
+                    {meta.shortLabel}
+                  </button>
+                );
+              })}
+            </div>
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-app-muted/60" />
               <input
@@ -649,7 +700,7 @@ export function HomeView({ userId }: HomeViewProps) {
                   {activeTopic ?? "New Session"}
                 </h1>
                 {currentStage > 0 && (() => {
-                  const stage = STAGE_CONFIG.find((s) => s.n === currentStage);
+                  const stage = activeStages.find((s) => s.n === currentStage);
                   return stage ? (
                     <span
                       className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
@@ -672,7 +723,7 @@ export function HomeView({ userId }: HomeViewProps) {
               </div>
             </div>
             {currentStage > 0 && (
-              <StageProgressBar currentStage={currentStage} />
+              <StageProgressBar currentStage={currentStage} stages={activeStages} />
             )}
             {activeTopic && messages.length > 0 && !isStreaming && (
               <Link
@@ -706,7 +757,11 @@ export function HomeView({ userId }: HomeViewProps) {
               )}
 
               {messages.length === 0 && !isStreaming ? (
-                <EmptyState onTopicClick={startTopic} />
+                <EmptyState
+                  onTopicClick={startTopic}
+                  track={sidebarTrack}
+                  stages={activeStages}
+                />
               ) : (
                 <div className="space-y-6">
                   {messages.map((message, index) => {
@@ -749,7 +804,7 @@ export function HomeView({ userId }: HomeViewProps) {
             <div className="shrink-0 border-t border-app-border/50 bg-app-panel/50 px-4 py-2.5">
               <div className="mx-auto flex max-w-4xl items-center gap-2 sm:px-4">
                 {showContinue && (() => {
-                  const nextStage = STAGE_CONFIG.find((s) => s.n === currentStage + 1);
+                  const nextStage = activeStages.find((s) => s.n === currentStage + 1);
                   const color = nextStage?.color ?? "#10b981";
                   return (
                     <button
@@ -873,8 +928,8 @@ export function HomeView({ userId }: HomeViewProps) {
               ) : (
                 <div className="space-y-px">
                   {sessions.map((record) => {
-                    const domain = getDomainForTopic(record.topic);
-                    const color = domain ? DOMAIN_COLORS[domain] : "#10b981";
+                    const domain = getDomainName(record.topic);
+                    const color = domain ? DOMAIN_COLORS[domain] ?? "#10b981" : "#10b981";
                     const msgCount = (record.messages as SessionMessage[])?.length ?? 0;
                     const stage = detectCurrentStage(
                       (record.messages as SessionMessage[]) || [],
