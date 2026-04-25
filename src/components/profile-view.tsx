@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, Loader2, RotateCcw } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { getSessionUsage } from "@/lib/session-usage";
 import { cn } from "@/lib/utils";
 import type { StarStory } from "@/lib/types";
 
@@ -104,7 +105,7 @@ function StoryCard({ story, index, onUpdate, onDelete }: StoryCardProps) {
                   {label}
                 </label>
                 <textarea
-                  rows={3}
+                  rows={5}
                   value={story[field]}
                   onChange={(e) => onUpdate(index, { [field]: e.target.value })}
                   className="w-full resize-none rounded-lg border border-app-border bg-app-panel px-3 py-2 text-[13px] text-app-fg placeholder:text-app-muted/40 focus:border-app-accent/50 focus:outline-none focus:ring-1 focus:ring-app-accent/20"
@@ -126,15 +127,19 @@ export function ProfileView({ userId }: ProfileViewProps) {
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [sessionUsage, setSessionUsage] = useState<{ used: number; limit: number } | null>(null);
 
   useEffect(() => {
     async function loadProfile() {
       const supabase = getSupabaseBrowserClient();
-      const { data } = await supabase
-        .from("profiles")
-        .select("resume_text,star_stories,extra_context")
-        .eq("user_id", userId)
-        .single();
+      const [{ data }, usage] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("resume_text,star_stories,extra_context")
+          .eq("user_id", userId)
+          .single(),
+        getSessionUsage(userId, supabase).catch(() => null),
+      ]);
 
       if (data) {
         setResumeText(data.resume_text || "");
@@ -146,6 +151,7 @@ export function ProfileView({ userId }: ProfileViewProps) {
           })),
         );
       }
+      if (usage) setSessionUsage(usage);
       setLoading(false);
     }
 
@@ -236,6 +242,14 @@ export function ProfileView({ userId }: ProfileViewProps) {
             <p className="mt-1 text-[13px] text-app-muted">
               Your resume and STAR stories are injected into every session.
             </p>
+            {sessionUsage && (
+              <p className="mt-1.5 text-[12px] text-app-muted/60">
+                Sessions this month:{" "}
+                <span className="font-semibold text-app-muted">
+                  {sessionUsage.used} / {sessionUsage.limit}
+                </span>
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -352,17 +366,36 @@ export function ProfileView({ userId }: ProfileViewProps) {
 
           {/* Extra context */}
           <section className="rounded-xl border border-app-border bg-app-panel p-5">
-            <h2 className="mb-1.5 text-[14px] font-semibold text-app-fg">Additional context</h2>
-            <p className="mb-3 text-[12px] text-app-muted/60">
-              Target roles, focus areas, or anything else the AI should know about you.
-            </p>
-            <textarea
-              rows={5}
-              value={extraContext}
-              onChange={(e) => setExtraContext(e.target.value)}
-              placeholder="e.g. I'm targeting LLM research roles. Strong RL background. Want to focus on training infrastructure and RLHF."
-              className="w-full resize-none rounded-lg border border-app-border bg-app-panel-2 px-3 py-2.5 text-[13px] text-app-fg/80 placeholder:text-app-muted/40 focus:border-app-accent/50 focus:outline-none focus:ring-1 focus:ring-app-accent/20"
-            />
+            <details>
+              <summary className="flex cursor-pointer list-none items-center justify-between">
+                <div>
+                  <h2 className="text-[14px] font-semibold text-app-fg">Additional context</h2>
+                  <p className="mt-0.5 text-[12px] text-app-muted/60">
+                    {extraContext
+                      ? `${extraContext.split(/\s+/).filter(Boolean).length} words · click to expand`
+                      : "Target roles, focus areas, anything the AI should know · click to add"}
+                  </p>
+                </div>
+                <svg
+                  className="h-4 w-4 shrink-0 text-app-muted/60 transition-transform details-chevron"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <div className="mt-3">
+                <textarea
+                  rows={8}
+                  value={extraContext}
+                  onChange={(e) => setExtraContext(e.target.value)}
+                  placeholder="e.g. I'm targeting LLM research roles. Strong RL background. Want to focus on training infrastructure and RLHF."
+                  className="w-full resize-none rounded-lg border border-app-border bg-app-panel-2 px-3 py-2.5 text-[13px] text-app-fg/80 placeholder:text-app-muted/40 focus:border-app-accent/50 focus:outline-none focus:ring-1 focus:ring-app-accent/20"
+                />
+              </div>
+            </details>
           </section>
 
           <div className="flex items-center justify-between">

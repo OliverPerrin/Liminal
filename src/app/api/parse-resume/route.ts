@@ -98,16 +98,13 @@ const starStorySchema = z.object({
   result: z.string().default(""),
 });
 
-const resumeParseSchema = z.object({
-  resume_text: z.string().min(1),
+const starStoriesSchema = z.object({
   star_stories: z.array(starStorySchema).default([]),
 });
 
 const fallbackStoriesSchema = z.object({
   star_stories: z.array(starStorySchema).min(1),
 });
-
-type ParsedResumePayload = z.infer<typeof resumeParseSchema>;
 
 type AnthropicToolUseBlock = {
   type?: string;
@@ -125,54 +122,6 @@ function trimResumeForPrompt(resumeText: string): string {
 
 function formatQuestionBank(): string {
   return STAR_QUESTION_BANK.map((question, index) => `${index + 1}. ${question}`).join("\n");
-}
-
-function extractTextContent(payload: unknown): string {
-  if (!payload || typeof payload !== "object") {
-    return "";
-  }
-
-  const maybeContent = (payload as { content?: Array<{ type?: string; text?: string }> }).content;
-  if (!Array.isArray(maybeContent)) {
-    return "";
-  }
-
-  return maybeContent
-    .filter((item) => item.type === "text" && typeof item.text === "string")
-    .map((item) => item.text)
-    .join("\n");
-}
-
-function parseJsonFromText(text: string): unknown {
-  const trimmed = text.trim();
-  if (trimmed.startsWith("{")) {
-    return JSON.parse(trimmed);
-  }
-
-  const start = trimmed.indexOf("{");
-  const end = trimmed.lastIndexOf("}");
-  if (start >= 0 && end > start) {
-    return JSON.parse(trimmed.slice(start, end + 1));
-  }
-
-  throw new Error("Model did not return JSON");
-}
-
-function extractToolInput(payload: unknown): unknown {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-
-  const maybeContent = (payload as { content?: AnthropicToolUseBlock[] }).content;
-  if (!Array.isArray(maybeContent)) {
-    return null;
-  }
-
-  const toolUse = maybeContent.find(
-    (item) => item?.type === "tool_use" && item?.name === "extract_resume_profile",
-  );
-
-  return toolUse?.input ?? null;
 }
 
 function extractToolInputByName(payload: unknown, toolName: string): unknown {
@@ -313,18 +262,18 @@ export async function POST(request: Request) {
       signal: controller.signal,
       body: JSON.stringify({
         model: anthropicModel,
-        max_tokens: 1800,
+        max_tokens: 4000,
         temperature: 0,
         tools: [
           {
-            name: "extract_resume_profile",
-            description: "Extract normalized resume text and STAR stories for interview prep.",
+            name: "extract_star_stories",
+            description: "Generate STAR stories from a resume for behavioral interview prep.",
             input_schema: {
               type: "object",
               properties: {
-                resume_text: { type: "string" },
                 star_stories: {
                   type: "array",
+                  minItems: 6,
                   items: {
                     type: "object",
                     properties: {
@@ -340,15 +289,15 @@ export async function POST(request: Request) {
                   },
                 },
               },
-              required: ["resume_text", "star_stories"],
+              required: ["star_stories"],
             },
           },
         ],
-        tool_choice: { type: "tool", name: "extract_resume_profile" },
+        tool_choice: { type: "tool", name: "extract_star_stories" },
         messages: [
           {
             role: "user",
-            content: `Extract and normalize this resume. Generate 6-8 high quality STAR stories.
+            content: `Generate 6-8 high quality STAR stories for behavioral interviews from this resume.
 Use only the exact question strings from this fixed list, one story per question:
 ${formatQuestionBank()}
 
@@ -372,18 +321,13 @@ ${promptResumeText}`,
     }
 
     const payload = await modelResponse.json();
-    const toolInput = extractToolInput(payload);
+    const toolInput = extractToolInputByName(payload, "extract_star_stories");
 
-    let parsedJson: ParsedResumePayload;
-    if (toolInput) {
-      parsedJson = resumeParseSchema.parse(toolInput);
-    } else {
-      // Fallback for unexpected model behavior.
-      const rawText = extractTextContent(payload);
-      parsedJson = resumeParseSchema.parse(parseJsonFromText(rawText));
-    }
+    const parsedJson = toolInput
+      ? starStoriesSchema.parse(toolInput)
+      : { star_stories: [] };
 
-    let starStories = (parsedJson.star_stories || []).map((story) => ({
+    let starStories = parsedJson.star_stories.map((story) => ({
       id: story.id || crypto.randomUUID(),
       title: story.title || "",
       question: story.question || "",
@@ -403,7 +347,7 @@ ${promptResumeText}`,
     }
 
     return Response.json({
-      resume_text: parsedJson.resume_text || resumeText,
+      resume_text: resumeText,
       star_stories: starStories,
     });
   } catch (error) {

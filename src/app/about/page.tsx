@@ -432,7 +432,7 @@ export default async function AboutPage() {
               <p className="mt-2 text-[12px] text-app-muted/70">
                 The structured path to your ML or SWE interview
               </p>
-              <p className="mt-1 text-[11px] text-app-muted/40">© 2025 LiminalML</p>
+              <p className="mt-1 text-[11px] text-app-muted/40">© 2026 LiminalML</p>
             </div>
             <div className="flex flex-col gap-1.5 text-[12px]">
               <Link

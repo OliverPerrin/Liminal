@@ -36,6 +36,13 @@ type HomeViewProps = {
   userId: string;
 };
 
+class SessionLimitError extends Error {
+  constructor(public used: number, public limit: number) {
+    super("monthly_limit_reached");
+    this.name = "SessionLimitError";
+  }
+}
+
 type TopicMastery = {
   lastStudied: string;
   count: number;
@@ -278,6 +285,7 @@ export function HomeView({ userId }: HomeViewProps) {
   const [historyOpen, setHistoryOpen] = useState(true);
   const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({});
   const [chatError, setChatError] = useState<string | null>(null);
+  const [limitError, setLimitError] = useState<{ used: number; limit: number } | null>(null);
   const [mastery, setMastery] = useState<Record<string, TopicMastery>>({});
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -404,8 +412,11 @@ export function HomeView({ userId }: HomeViewProps) {
 
     if (!response.ok || !response.body) {
       const errorPayload = (await response.json().catch(() => null)) as
-        | { error?: string; details?: string }
+        | { error?: string; used?: number; limit?: number; details?: string }
         | null;
+      if (response.status === 429 && errorPayload?.error === "monthly_limit_reached") {
+        throw new SessionLimitError(errorPayload.used ?? 0, errorPayload.limit ?? 20);
+      }
       const message = errorPayload?.error ?? "Session request failed";
       const details = errorPayload?.details;
       throw new Error(details ? `${message}: ${details}` : message);
@@ -451,6 +462,7 @@ export function HomeView({ userId }: HomeViewProps) {
     if (!topic || !userMessage) return;
 
     setChatError(null);
+    setLimitError(null);
     setIsStreaming(true);
 
     try {
@@ -475,8 +487,12 @@ export function HomeView({ userId }: HomeViewProps) {
       await streamSession(topic, baseMessages, currentSessionId);
       setMessageInput("");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to run session";
-      setChatError(message);
+      if (error instanceof SessionLimitError) {
+        setLimitError({ used: error.used, limit: error.limit });
+      } else {
+        const message = error instanceof Error ? error.message : "Failed to run session";
+        setChatError(message);
+      }
     } finally {
       setIsStreaming(false);
     }
@@ -753,6 +769,21 @@ export function HomeView({ userId }: HomeViewProps) {
               {chatError && (
                 <div className="mb-5 rounded-lg border border-red-500/25 bg-red-500/5 px-4 py-3 text-sm text-red-300">
                   {chatError}
+                </div>
+              )}
+
+              {limitError && (
+                <div className="mb-5 rounded-xl border border-app-accent/20 bg-app-accent/5 px-5 py-4">
+                  <p className="text-[14px] font-semibold text-app-fg">
+                    Monthly session limit reached
+                  </p>
+                  <p className="mt-1.5 text-[13px] leading-6 text-app-muted">
+                    You&apos;ve used all {limitError.limit} of your sessions this month. Sessions
+                    reset on the 1st. Upgrade to Pro for unlimited sessions.
+                  </p>
+                  <p className="mt-2 text-[12px] text-app-muted/50">
+                    {limitError.used} / {limitError.limit} sessions used this month
+                  </p>
                 </div>
               )}
 

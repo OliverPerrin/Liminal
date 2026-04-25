@@ -2,11 +2,12 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { buildSystemPrompt } from "@/lib/systemPrompt";
 import { assertEnv } from "@/lib/runtime-env";
+import { checkAndIncrementSessionUsage } from "@/lib/session-usage";
+import { pickSessionModel } from "@/lib/stage-model";
 import type { SessionMessage } from "@/lib/types";
 
 export const runtime = "edge";
 
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
 const DEFAULT_ANTHROPIC_VERSION = "2023-06-01";
 
 const requestSchema = z.object({
@@ -106,10 +107,7 @@ export async function POST(request: Request) {
       process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-    const anthropicModel =
-      process.env.ANTHROPIC_SESSION_MODEL ||
-      process.env.ANTHROPIC_MODEL ||
-      DEFAULT_ANTHROPIC_MODEL;
+    const anthropicModel = pickSessionModel(requestData.messages);
     const anthropicVersion =
       process.env.ANTHROPIC_API_VERSION || DEFAULT_ANTHROPIC_VERSION;
 
@@ -166,6 +164,14 @@ export async function POST(request: Request) {
 
     let activeSessionId = requestData.session_id;
     if (!activeSessionId) {
+      const usage = await checkAndIncrementSessionUsage(userId, adminClient);
+      if (!usage.allowed) {
+        return Response.json(
+          { error: "monthly_limit_reached", used: usage.used, limit: usage.limit },
+          { status: 429 },
+        );
+      }
+
       const { data: inserted, error: insertError } = await adminClient
         .from("sessions")
         .insert({
