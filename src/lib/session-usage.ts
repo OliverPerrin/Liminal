@@ -15,12 +15,19 @@ export type SessionUsageResult = {
  * Pass the service-role adminClient so the underlying Postgres function can
  * lock and update the row without RLS interference.
  *
- * The monthly cap is read from NEXT_PUBLIC_MONTHLY_SESSION_LIMIT (default 20).
+ * Pro users (isPro=true) skip the limit entirely and the counter is not
+ * incremented. The monthly cap is read from NEXT_PUBLIC_MONTHLY_SESSION_LIMIT
+ * (default 20). When unlimited, `limit` is returned as -1.
  */
 export async function checkAndIncrementSessionUsage(
   userId: string,
   client: SupabaseClient,
+  isPro: boolean = false,
 ): Promise<SessionUsageResult> {
+  if (isPro) {
+    return { allowed: true, used: 0, limit: -1 };
+  }
+
   const limit =
     parseInt(process.env.NEXT_PUBLIC_MONTHLY_SESSION_LIMIT ?? "", 10) ||
     DEFAULT_MONTHLY_SESSION_LIMIT;

@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, Loader2, RotateCcw } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, RotateCcw, Sparkles } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { getSessionUsage } from "@/lib/session-usage";
+import { startProCheckout } from "@/lib/checkout";
 import { cn } from "@/lib/utils";
 import type { StarStory } from "@/lib/types";
 
@@ -128,6 +129,9 @@ export function ProfileView({ userId }: ProfileViewProps) {
   const [regenerating, setRegenerating] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [sessionUsage, setSessionUsage] = useState<{ used: number; limit: number } | null>(null);
+  const [isPro, setIsPro] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadProfile() {
@@ -135,7 +139,7 @@ export function ProfileView({ userId }: ProfileViewProps) {
       const [{ data }, usage] = await Promise.all([
         supabase
           .from("profiles")
-          .select("resume_text,star_stories,extra_context")
+          .select("resume_text,star_stories,extra_context,is_pro")
           .eq("user_id", userId)
           .single(),
         getSessionUsage(userId, supabase).catch(() => null),
@@ -144,6 +148,7 @@ export function ProfileView({ userId }: ProfileViewProps) {
       if (data) {
         setResumeText(data.resume_text || "");
         setExtraContext(data.extra_context || "");
+        setIsPro(Boolean(data.is_pro));
         setStories(
           ((data.star_stories as StarStory[]) || []).map((s) => ({
             ...s,
@@ -157,6 +162,18 @@ export function ProfileView({ userId }: ProfileViewProps) {
 
     void loadProfile();
   }, [userId]);
+
+  async function handleUpgrade() {
+    setUpgrading(true);
+    setUpgradeError(null);
+    try {
+      await startProCheckout();
+      // Browser navigates to Stripe; control rarely returns here.
+    } catch (e) {
+      setUpgradeError(e instanceof Error ? e.message : "Checkout failed");
+      setUpgrading(false);
+    }
+  }
 
   function updateStory(index: number, patch: Partial<StarStory>) {
     setStories((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
@@ -246,7 +263,9 @@ export function ProfileView({ userId }: ProfileViewProps) {
               <p className="mt-1.5 text-[12px] text-app-muted/60">
                 Sessions this month:{" "}
                 <span className="font-semibold text-app-muted">
-                  {sessionUsage.used} / {sessionUsage.limit}
+                  {isPro
+                    ? `${sessionUsage.used} · Pro (unlimited)`
+                    : `${sessionUsage.used} / ${sessionUsage.limit}`}
                 </span>
               </p>
             )}
@@ -276,6 +295,35 @@ export function ProfileView({ userId }: ProfileViewProps) {
         )}
 
         <div className="space-y-5">
+          {/* Upgrade to Pro */}
+          {!isPro && (
+            <section className="rounded-xl border border-app-accent/30 bg-app-accent/5 p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-app-accent" />
+                    <h2 className="text-[14px] font-semibold text-app-fg">LiminalML Pro</h2>
+                  </div>
+                  <p className="mt-1.5 text-[13px] text-app-muted">
+                    Unlimited sessions · $9/month
+                  </p>
+                  {upgradeError && (
+                    <p className="mt-2 text-[12px] text-red-300">{upgradeError}</p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleUpgrade}
+                  disabled={upgrading}
+                  className="flex shrink-0 items-center gap-2 rounded-lg bg-app-accent px-4 py-2 text-[13px] font-semibold text-white shadow shadow-app-accent/20 transition-all hover:opacity-90 disabled:opacity-50"
+                >
+                  {upgrading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {upgrading ? "Redirecting…" : "Upgrade"}
+                </button>
+              </div>
+            </section>
+          )}
+
           {/* Resume text */}
           <section className="rounded-xl border border-app-border bg-app-panel p-5">
             <details>

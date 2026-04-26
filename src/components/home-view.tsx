@@ -20,6 +20,7 @@ import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { startProCheckout } from "@/lib/checkout";
 import {
   getDomainForTopic as lookupDomainForTopic,
   getTaxonomy,
@@ -286,6 +287,7 @@ export function HomeView({ userId }: HomeViewProps) {
   const [expandedDomains, setExpandedDomains] = useState<Record<string, boolean>>({});
   const [chatError, setChatError] = useState<string | null>(null);
   const [limitError, setLimitError] = useState<{ used: number; limit: number } | null>(null);
+  const [upgrading, setUpgrading] = useState(false);
   const [mastery, setMastery] = useState<Record<string, TopicMastery>>({});
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -779,11 +781,28 @@ export function HomeView({ userId }: HomeViewProps) {
                   </p>
                   <p className="mt-1.5 text-[13px] leading-6 text-app-muted">
                     You&apos;ve used all {limitError.limit} of your sessions this month. Sessions
-                    reset on the 1st. Upgrade to Pro for unlimited sessions.
+                    reset on the 1st.
                   </p>
                   <p className="mt-2 text-[12px] text-app-muted/50">
                     {limitError.used} / {limitError.limit} sessions used this month
                   </p>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setUpgrading(true);
+                      try {
+                        await startProCheckout();
+                      } catch (e) {
+                        setChatError(e instanceof Error ? e.message : "Checkout failed");
+                        setUpgrading(false);
+                      }
+                    }}
+                    disabled={upgrading}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg bg-app-accent px-4 py-2 text-[13px] font-semibold text-white shadow shadow-app-accent/20 transition-all hover:opacity-90 disabled:opacity-50"
+                  >
+                    {upgrading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    {upgrading ? "Redirecting…" : "Upgrade to Pro · $9/month"}
+                  </button>
                 </div>
               )}
 

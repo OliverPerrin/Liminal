@@ -28,6 +28,7 @@ type ProfileRecord = {
   resume_text: string | null;
   star_stories: unknown;
   extra_context: string | null;
+  is_pro: boolean;
 };
 
 function parseSseEventsWithBuffer(buffer: string): {
@@ -149,7 +150,7 @@ export async function POST(request: Request) {
 
     const { data: profile } = await adminClient
       .from("profiles")
-      .select("resume_text,star_stories,extra_context")
+      .select("resume_text,star_stories,extra_context,is_pro")
       .eq("user_id", userId)
       .single<ProfileRecord>();
 
@@ -164,7 +165,11 @@ export async function POST(request: Request) {
 
     let activeSessionId = requestData.session_id;
     if (!activeSessionId) {
-      const usage = await checkAndIncrementSessionUsage(userId, adminClient);
+      const usage = await checkAndIncrementSessionUsage(
+        userId,
+        adminClient,
+        profile?.is_pro ?? false,
+      );
       if (!usage.allowed) {
         return Response.json(
           { error: "monthly_limit_reached", used: usage.used, limit: usage.limit },

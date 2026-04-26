@@ -14,6 +14,8 @@ export type Profile = {
   resume_text: string | null;
   star_stories: StarStory[];
   extra_context: string | null;
+  is_pro: boolean;
+  stripe_customer_id: string | null;
   created_at: string;
   updated_at: string;
 };
