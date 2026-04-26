@@ -6,6 +6,7 @@ import { TRACKS } from "@/lib/tracks";
 import { getCurrentUser } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
 import { Logo } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { ThreeHero } from "@/components/three-hero";
 import { TestimonialsSection } from "@/components/TestimonialsSection";
 import { ProductShowcase } from "@/components/landing/product-showcase";
@@ -105,12 +106,15 @@ export default async function AboutPage() {
             <div className="flex items-center gap-2">
               <Logo size={22} />
             </div>
-            <Link
-              href="/auth"
-              className="rounded-lg bg-app-accent px-4 py-1.5 text-[13px] font-semibold text-white transition-all hover:opacity-90 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/40"
-            >
-              Get started
-            </Link>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <Link
+                href="/auth"
+                className="rounded-lg bg-app-accent px-4 py-1.5 text-[13px] font-semibold text-white transition-all hover:opacity-90 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/40"
+              >
+                Get started
+              </Link>
+            </div>
           </div>
         </header>
       )}

@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Menu, Moon, Sun, X } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Logo } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
@@ -22,25 +23,12 @@ type AppHeaderProps = {
 export function AppHeader({ studiedCount }: AppHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [isDark, setIsDark] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const stored = localStorage.getItem("lml-theme");
-    setIsDark(stored !== "light");
-  }, []);
 
   // Close menu on route change
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
-
-  function toggleTheme() {
-    const next = isDark ? "light" : "dark";
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle("light", !isDark);
-    localStorage.setItem("lml-theme", next);
-  }
 
   async function handleLogout() {
     const supabase = getSupabaseBrowserClient();
@@ -89,15 +77,7 @@ export function AppHeader({ studiedCount }: AppHeaderProps) {
 
           <div className="mx-2 h-3.5 w-px bg-app-border" />
 
-          {/* Theme toggle */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            className="rounded-md p-1.5 text-app-muted/60 transition-colors hover:bg-app-panel-2 hover:text-app-fg"
-          >
-            {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-          </button>
+          <ThemeToggle />
 
           <button
             type="button"
@@ -111,14 +91,7 @@ export function AppHeader({ studiedCount }: AppHeaderProps) {
 
         {/* Mobile controls */}
         <div className="flex items-center gap-1 md:hidden">
-          <button
-            type="button"
-            onClick={toggleTheme}
-            title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            className="rounded-md p-1.5 text-app-muted/60 transition-colors hover:bg-app-panel-2 hover:text-app-fg"
-          >
-            {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-          </button>
+          <ThemeToggle />
           <button
             type="button"
             onClick={() => setMenuOpen((p) => !p)}
