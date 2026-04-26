@@ -101,22 +101,9 @@ export default async function AboutPage() {
       {user ? (
         <AppHeader />
       ) : (
-        <header className="relative z-30 border-b border-app-border bg-app-panel/95 backdrop-blur-sm">
-          <div className="mx-auto flex h-11 w-full max-w-5xl items-center justify-between px-6">
-            <div className="flex items-center gap-2">
-              <Logo size={22} />
-            </div>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <Link
-                href="/auth"
-                className="rounded-lg bg-app-accent px-4 py-1.5 text-[13px] font-semibold text-white transition-all hover:opacity-90 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/40"
-              >
-                Get started
-              </Link>
-            </div>
-          </div>
-        </header>
+        <div className="fixed right-4 top-4 z-40">
+          <ThemeToggle className="border border-app-border bg-app-panel/80 backdrop-blur-sm" />
+        </div>
       )}
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
@@ -140,7 +127,7 @@ export default async function AboutPage() {
           {/* Left: copy + CTAs */}
           <div className="text-center lg:text-left">
             <div className="mb-5 flex justify-center lg:justify-start">
-              <Logo size={28} />
+              <Logo size={44} />
             </div>
             <div className="mb-6 inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-app-border bg-app-panel/80 px-4 py-1.5 text-[13px] font-medium text-app-accent backdrop-blur-sm">
               <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-app-accent" />
