@@ -19,9 +19,52 @@ const fraunces = Fraunces({
   axes: ["opsz"],
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://liminalml.com";
+
 export const metadata: Metadata = {
-  title: "LiminalML",
-  description: "AI-powered ML interview prep with personalized sessions.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "LiminalML — Structured prep for ML and SWE interviews",
+    template: "%s · LiminalML",
+  },
+  description:
+    "Personalized ML, deep learning, RL, and software engineering interview prep. Upload your resume, study 130+ topics through rigorous 6-stage AI sessions grounded in your own project experience.",
+  applicationName: "LiminalML",
+  keywords: [
+    "ML interview prep",
+    "machine learning interview",
+    "deep learning interview",
+    "research engineer interview",
+    "MLE interview",
+    "system design interview",
+    "STAR stories",
+    "AI interview coach",
+  ],
+  openGraph: {
+    title: "LiminalML — ML + SWE interview prep",
+    description:
+      "130+ topics across ML and SWE. 6-stage sessions. AI-personalized to your resume.",
+    siteName: "LiminalML",
+    type: "website",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "LiminalML — ML + SWE interview prep",
+    description:
+      "130+ topics across ML and SWE. 6-stage sessions. AI-personalized to your resume.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
+  },
 };
 
 export default function RootLayout({

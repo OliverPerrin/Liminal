@@ -1,0 +1,206 @@
+{
+  "Classical ML": [
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "An Introduction to Statistical Learning",
+      "url": "https://www.statlearning.com",
+      "type": "free_book"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Hands-On Machine Learning with Scikit-Learn (Géron)",
+      "url": "https://www.oreilly.com/library/view/hands-on-machine-learning/9781098125967/",
+      "type": "paid_book"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "scikit-learn User Guide",
+      "url": "https://scikit-learn.org/stable/user_guide.html",
+      "type": "documentation"
+    }
+  ],
+  "Deep Learning": [
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Fast.ai Practical Deep Learning",
+      "url": "https://course.fast.ai",
+      "type": "free_course"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Dive into Deep Learning",
+      "url": "https://d2l.ai",
+      "type": "free_book"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Karpathy: Neural Networks Zero to Hero",
+      "url": "https://karpathy.ai/zero-to-hero.html",
+      "type": "video"
+    }
+  ],
+  "Reinforcement Learning": [
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Sutton & Barto: Reinforcement Learning",
+      "url": "http://incompleteideas.net/book/the-book-2nd.html",
+      "type": "free_book"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "OpenAI Spinning Up in Deep RL",
+      "url": "https://spinningup.openai.com",
+      "type": "free_course"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "David Silver's RL Course (UCL)",
+      "url": "https://www.davidsilver.uk/teaching/",
+      "type": "video"
+    }
+  ],
+  "Training Engineering": [
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "HuggingFace Accelerate Docs",
+      "url": "https://huggingface.co/docs/accelerate",
+      "type": "documentation"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "PyTorch Distributed Training Overview",
+      "url": "https://pytorch.org/tutorials/beginner/dist_overview.html",
+      "type": "documentation"
+    }
+  ],
+  "Systems and MLOps": [
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Designing Machine Learning Systems (Chip Huyen)",
+      "url": "https://www.oreilly.com/library/view/designing-machine-learning/9781098107956/",
+      "type": "paid_book"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Full Stack Deep Learning",
+      "url": "https://fullstackdeeplearning.com",
+      "type": "free_course"
+    }
+  ],
+  "Frontend": [
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "MDN Web Docs",
+      "url": "https://developer.mozilla.org",
+      "type": "documentation"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "web.dev (Google)",
+      "url": "https://web.dev",
+      "type": "documentation"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Frontend Masters",
+      "url": "https://frontendmasters.com",
+      "type": "paid_course"
+    }
+  ],
+  "Backend": [
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Designing Data-Intensive Applications",
+      "url": "https://dataintensive.net",
+      "type": "paid_book"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Backend Developer Roadmap",
+      "url": "https://roadmap.sh/backend",
+      "type": "free_resource"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "AWS Builders' Library",
+      "url": "https://aws.amazon.com/builders-library/",
+      "type": "documentation"
+    }
+  ],
+  "System Design": [
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "ByteByteGo System Design",
+      "url": "https://bytebytego.com",
+      "type": "paid_course"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "System Design Primer",
+      "url": "https://github.com/donnemartin/system-design-primer",
+      "type": "free_resource"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "High Scalability",
+      "url": "http://highscalability.com",
+      "type": "blog"
+    }
+  ],
+  "UI / UX": [
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Refactoring UI",
+      "url": "https://www.refactoringui.com",
+      "type": "paid_book"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Smashing Magazine",
+      "url": "https://www.smashingmagazine.com",
+      "type": "blog"
+    }
+  ],
+  "CS Fundamentals": [
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "CS50: Introduction to Computer Science",
+      "url": "https://cs50.harvard.edu/x/",
+      "type": "free_course"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Algorithms (Sedgewick & Wayne)",
+      "url": "https://algs4.cs.princeton.edu/home/",
+      "type": "free_book"
+    }
+  ],
+  "default_ml": [
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Fast.ai Practical Deep Learning",
+      "url": "https://course.fast.ai",
+      "type": "free_course"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Dive into Deep Learning",
+      "url": "https://d2l.ai",
+      "type": "free_book"
+    }
+  ],
+  "default_swe": [
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "Designing Data-Intensive Applications",
+      "url": "https://dataintensive.net",
+      "type": "paid_book"
+    },
+    {
+      "_affiliate_note": "TODO: swap for tracked affiliate link",
+      "title": "MDN Web Docs",
+      "url": "https://developer.mozilla.org",
+      "type": "documentation"
+    }
+  ]
+}

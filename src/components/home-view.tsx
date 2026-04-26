@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
 import { MarkdownMessage } from "@/components/markdown-message";
+import { SessionResources } from "@/components/session-resources";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { startProCheckout } from "@/lib/checkout";
 import {
@@ -303,6 +304,13 @@ export function HomeView({ userId }: HomeViewProps) {
   const showContinue = useMemo(
     () => detectContinuePrompt(messages, isStreaming),
     [messages, isStreaming],
+  );
+  const sessionComplete = useMemo(
+    () =>
+      messages.some(
+        (m) => m.role === "assistant" && /##\s*Session Summary/i.test(m.content),
+      ),
+    [messages],
   );
 
   // Load mastery from localStorage
@@ -843,6 +851,9 @@ export function HomeView({ userId }: HomeViewProps) {
                       <span className="typing-dot h-1.5 w-1.5 rounded-full bg-app-accent/60" />
                       <span className="typing-dot h-1.5 w-1.5 rounded-full bg-app-accent/60" />
                     </div>
+                  )}
+                  {sessionComplete && !isStreaming && activeTopic && (
+                    <SessionResources topic={activeTopic} track={activeTrack} />
                   )}
                 </div>
               )}

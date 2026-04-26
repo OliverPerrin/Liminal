@@ -15,13 +15,15 @@ export const metadata: Metadata = {
   title: "LiminalML — Structured prep for ML and SWE interviews",
   description:
     "Upload your resume. Get personalized STAR stories. Study ML, DL, RL, backend, frontend, and system design through a rigorous 6-stage session grounded in your own project experience.",
+  alternates: {
+    canonical: "/about",
+  },
   openGraph: {
     title: "LiminalML — ML + SWE interview prep",
     description:
       "130+ topics across ML and SWE. 6-stage sessions. AI-personalized to your resume.",
-    url: "https://liminalml.com/about",
+    url: "/about",
     siteName: "LiminalML",
-    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
     type: "website",
   },
   twitter: {
@@ -29,7 +31,6 @@ export const metadata: Metadata = {
     title: "LiminalML — ML + SWE interview prep",
     description:
       "130+ topics across ML and SWE. 6-stage sessions. AI-personalized to your resume.",
-    images: ["/og-image.png"],
   },
 };
 
@@ -49,8 +50,53 @@ export default async function AboutPage() {
   const totalTopics = mlTopicCount + sweTopicCount;
   const totalDomains = ML_TAXONOMY.length + SWE_TAXONOMY.length;
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://liminalml.com";
+
+  // schema.org markup so AI/search summarizers know what kind of product this
+  // is, what it costs, and where to find it.
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        name: "LiminalML",
+        url: siteUrl,
+        description:
+          "Personalized AI-driven prep for ML, deep learning, RL, and software engineering interviews.",
+      },
+      {
+        "@type": "SoftwareApplication",
+        name: "LiminalML",
+        applicationCategory: "EducationalApplication",
+        operatingSystem: "Web",
+        url: siteUrl,
+        description:
+          `Structured ${totalTopics}-topic interview prep platform across ML, deep learning, reinforcement learning, and software engineering. Each session follows a rigorous 6-stage format and is personalized to the user's resume and STAR stories.`,
+        offers: [
+          {
+            "@type": "Offer",
+            name: "Free",
+            price: "0",
+            priceCurrency: "USD",
+          },
+          {
+            "@type": "Offer",
+            name: "Pro",
+            price: "9",
+            priceCurrency: "USD",
+            description: "Unlimited monthly sessions",
+          },
+        ],
+      },
+    ],
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-app-bg">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       {user ? (
         <AppHeader />
       ) : (
