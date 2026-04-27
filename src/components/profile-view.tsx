@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, Loader2, RotateCcw, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, RotateCcw } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { getSessionUsage } from "@/lib/session-usage";
@@ -310,8 +310,7 @@ export function ProfileView({ userId }: ProfileViewProps) {
 
               <div className="relative flex items-start justify-between gap-6">
                 <div className="min-w-0">
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-app-accent/40 bg-app-accent/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-app-accent">
-                    <Sparkles className="h-3 w-3" />
+                  <div className="inline-flex items-center rounded-full border border-app-accent/40 bg-app-accent/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-app-accent">
                     Pro
                   </div>
                   <h2 className="mt-3 text-[18px] font-semibold leading-tight text-app-fg">
