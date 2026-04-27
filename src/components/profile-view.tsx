@@ -297,15 +297,28 @@ export function ProfileView({ userId }: ProfileViewProps) {
         <div className="space-y-5">
           {/* Upgrade to Pro */}
           {!isPro && (
-            <section className="rounded-xl border border-app-accent/30 bg-app-accent/5 p-5">
-              <div className="flex items-start justify-between gap-4">
+            <section className="relative overflow-hidden rounded-xl border border-app-accent/25 bg-app-accent/5 p-6">
+              {/* Decorative glow */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-app-accent/15 blur-3xl"
+              />
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -bottom-20 -left-12 h-40 w-40 rounded-full bg-[#818cf8]/10 blur-3xl"
+              />
+
+              <div className="relative flex items-start justify-between gap-6">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-app-accent" />
-                    <h2 className="text-[14px] font-semibold text-app-fg">LiminalML Pro</h2>
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-app-accent/40 bg-app-accent/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-app-accent">
+                    <Sparkles className="h-3 w-3" />
+                    Pro
                   </div>
-                  <p className="mt-1.5 text-[13px] text-app-muted">
-                    Unlimited sessions · $9/month
+                  <h2 className="mt-3 text-[18px] font-semibold leading-tight text-app-fg">
+                    Unlimited sessions for $9/month
+                  </h2>
+                  <p className="mt-1.5 text-[13px] leading-6 text-app-muted">
+                    Remove the monthly cap and keep studying as much as you need. Cancel anytime.
                   </p>
                   {upgradeError && (
                     <p className="mt-2 text-[12px] text-red-300">{upgradeError}</p>
@@ -315,7 +328,7 @@ export function ProfileView({ userId }: ProfileViewProps) {
                   type="button"
                   onClick={handleUpgrade}
                   disabled={upgrading}
-                  className="flex shrink-0 items-center gap-2 rounded-lg bg-app-accent px-4 py-2 text-[13px] font-semibold text-white shadow shadow-app-accent/20 transition-all hover:opacity-90 disabled:opacity-50"
+                  className="flex shrink-0 items-center gap-2 rounded-lg bg-gradient-to-r from-app-accent to-[#818cf8] px-5 py-2.5 text-[13px] font-semibold text-white shadow-lg shadow-app-accent/25 transition-all hover:shadow-[0_0_28px_rgba(16,185,129,0.45)] hover:opacity-95 disabled:opacity-50 disabled:hover:shadow-lg"
                 >
                   {upgrading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   {upgrading ? "Redirecting…" : "Upgrade"}

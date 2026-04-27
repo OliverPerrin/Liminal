@@ -7,6 +7,7 @@ import { LogOut, Menu, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { UpgradePill } from "@/components/upgrade-pill";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
@@ -76,6 +77,8 @@ export function AppHeader({ studiedCount }: AppHeaderProps) {
           )}
 
           <div className="mx-2 h-3.5 w-px bg-app-border" />
+
+          <UpgradePill />
 
           <ThemeToggle />
 
