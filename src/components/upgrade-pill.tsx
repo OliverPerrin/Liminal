@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { startProCheckout } from "@/lib/checkout";
 import { cn } from "@/lib/utils";
@@ -74,11 +74,7 @@ export function UpgradePill({ className }: UpgradePillProps) {
         className,
       )}
     >
-      {busy ? (
-        <Loader2 className="h-3 w-3 animate-spin" />
-      ) : (
-        <Sparkles className="h-3 w-3" />
-      )}
+      {busy && <Loader2 className="h-3 w-3 animate-spin" />}
       <span>{busy ? "Redirecting…" : "Upgrade"}</span>
     </button>
   );
